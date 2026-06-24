@@ -2,10 +2,9 @@
   const DEG = Math.PI / 180;
   const SUN_RADIUS = 14;
   const GLOW_RADIUS = 36;
-  const TUCK_FADE_DEG = 4;
   const GROUND_LINE = 0.5;
   const CIRCLE_RADIUS_RATIO = 0.38;
-  const SKY_TOP_MARGIN = 16;
+  const SKY_TOP_MARGIN = 52;
   const TICK_MS = 1000;
   const DAY_CHECK_MS = 30000;
 
@@ -166,26 +165,26 @@
     );
   }
 
-  function sunOnCircle(solarTime, elevation, groundY, arcR, arcCx) {
+  function sunOnCircle(solarTime, groundY, arcR, arcCx) {
     const angle = Solar.cycleAngleForEvents(solarTime, dayEvents);
-    const x = arcCx + Math.cos(angle) * arcR;
-    let y = groundY - Math.sin(angle) * arcR;
-
-    if (elevation > 0 && dayEvents.maxElevation > 0) {
-      const elevY = groundY - (elevation / dayEvents.maxElevation) * arcR;
-      const blend = Math.min(1, elevation / TUCK_FADE_DEG);
-      y = y * (1 - blend) + elevY * blend;
-    }
-
-    return { x, y, angle };
+    return {
+      x: arcCx + Math.cos(angle) * arcR,
+      y: groundY - Math.sin(angle) * arcR,
+      angle,
+    };
   }
 
-  function drawSun(sunX, sunY, groundY, w, belowHorizon) {
+  function isDaylight(solarTime) {
+    const t = solarTime.getTime();
+    return t >= dayEvents.sunrise.getTime() && t <= dayEvents.sunset.getTime();
+  }
+
+  function drawSun(sunX, sunY, groundY, w, belowHorizon, straddlesHorizon) {
     const alpha = belowHorizon ? 0.45 : 1;
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    if (!belowHorizon) {
+    if (!belowHorizon && !straddlesHorizon) {
       ctx.beginPath();
       ctx.rect(0, 0, w, groundY);
       ctx.clip();
@@ -256,15 +255,11 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const { x: sunX, y: sunY } = sunOnCircle(
-      solarTime,
-      elevation,
-      groundY,
-      arcR,
-      arcCx
-    );
-    const belowHorizon = elevation <= 0;
-    drawSun(sunX, sunY, groundY, w, belowHorizon);
+    const { x: sunX, y: sunY } = sunOnCircle(solarTime, groundY, arcR, arcCx);
+    const daylight = isDaylight(solarTime);
+    const straddlesHorizon =
+      sunY + SUN_RADIUS > groundY && sunY - SUN_RADIUS < groundY;
+    drawSun(sunX, sunY, groundY, w, !daylight, straddlesHorizon);
 
     ctx.fillStyle = "rgba(255,255,255,0.45)";
     ctx.font = "10px DM Sans, sans-serif";
