@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Ground sunlight as a percentage of solar noon for your location.">
+  <title>Solar Light</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-text">
+        <h1>Solar Light</h1>
+        <p class="subtitle">Ground sunlight as a percentage of solar noon</p>
+      </div>
+      <div class="location" id="location">
+        <span class="location-icon" aria-hidden="true">◎</span>
+        <span id="location-text">Detecting location…</span>
+        <button type="button" id="manual-location-btn" class="link-btn">Edit</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="sky-panel" aria-label="Sun position visualization">
+        <canvas id="sky-canvas"></canvas>
+        <div class="sky-overlay">
+          <div class="percentage-display" id="percentage">—%</div>
+          <p class="percentage-label">of solar noon sunlight on the ground</p>
+        </div>
+      </section>
+
+      <section class="controls">
+        <div class="time-row">
+          <time id="current-time" class="current-time">—:——</time>
+          <button type="button" id="now-btn" class="now-btn" title="Jump to current time">Now</button>
+        </div>
+
+        <div class="slider-wrap">
+          <label for="time-slider" class="visually-hidden">Time of day</label>
+          <input
+            type="range"
+            id="time-slider"
+            min="0"
+            max="1000"
+            value="500"
+            step="1"
+          >
+          <div class="slider-labels">
+            <span id="sunrise-label">Sunrise</span>
+            <span id="noon-label">Solar Noon</span>
+            <span id="sunset-label">Sunset</span>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Sun elevation</span>
+            <span class="stat-value" id="elevation">—°</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Day length</span>
+            <span class="stat-value" id="day-length">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Max elevation</span>
+            <span class="stat-value" id="max-elevation">—°</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Elevation</span>
+            <span class="stat-value" id="altitude">—</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="location-dialog" class="location-dialog">
+    <form method="dialog" id="location-form">
+      <h2>Set your location</h2>
+      <label>
+        Latitude
+        <input type="number" id="lat-input" step="0.0001" min="-90" max="90" required>
+      </label>
+      <label>
+        Longitude
+        <input type="number" id="lon-input" step="0.0001" min="-180" max="180" required>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-location" class="secondary-btn">Cancel</button>
+        <button type="submit" class="primary-btn">Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="solar.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
