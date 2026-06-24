@@ -218,7 +218,9 @@ const Solar = (() => {
 
   function sliderToTime(sliderValue, date) {
     const midnight = localMidnight(date);
-    return new Date(midnight.getTime() + (sliderValue / 1000) * dayMs);
+    const fraction = Math.min(Math.max(Number(sliderValue), 0), 1000) / 1000;
+    const offset = fraction >= 1 ? dayMs - 1 : fraction * dayMs;
+    return new Date(midnight.getTime() + offset);
   }
 
   function timeToSlider(time) {
@@ -238,12 +240,16 @@ const Solar = (() => {
    */
   function sunCycleAngle(solarTime, events) {
     const { sunrise, solarNoon, sunset } = events;
-    const t = solarTime.getTime();
+    const dayStart = localMidnight(sunrise).getTime();
+    const dayEnd = dayStart + dayMs;
+    let t = solarTime.getTime();
+
+    if (t >= dayEnd) return -Math.PI / 2;
+    if (t < dayStart) t = dayStart;
+
     const sr = sunrise.getTime();
     const sn = solarNoon.getTime();
     const ss = sunset.getTime();
-    const midnight = localMidnight(solarTime).getTime();
-    const nextMidnight = midnight + dayMs;
 
     if (t >= sr && t <= ss) {
       if (t <= sn) {
@@ -255,15 +261,15 @@ const Solar = (() => {
     }
 
     if (t > ss) {
-      const span = nextMidnight - ss;
+      const span = dayEnd - ss;
       if (span <= 0) return 0;
       const f = (t - ss) / span;
       return -f * (Math.PI / 2);
     }
 
-    const span = sr - midnight;
+    const span = sr - dayStart;
     if (span <= 0) return -Math.PI / 2;
-    const f = (t - midnight) / span;
+    const f = (t - dayStart) / span;
     return -Math.PI / 2 - f * (Math.PI / 2);
   }
 
