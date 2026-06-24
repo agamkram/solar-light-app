@@ -5,6 +5,7 @@
   const GROUND_LINE = 0.5;
   const CIRCLE_RADIUS_RATIO = 0.38;
   const SKY_TOP_MARGIN = 52;
+  const CIRCLE_LABEL_FONT = "10px DM Sans, sans-serif";
   const TICK_MS = 1000;
   const DAY_CHECK_MS = 30000;
 
@@ -364,15 +365,12 @@
       sunY + SUN_RADIUS > groundY && sunY - SUN_RADIUS < groundY;
     drawSun(sunX, sunY, groundY, w, !daylight, straddlesHorizon, colors.night);
 
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.font = "10px DM Sans, sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.font = CIRCLE_LABEL_FONT;
     ctx.textAlign = "center";
+    ctx.fillText("Solar Noon", arcCx, groundY - arcR - 8);
     ctx.fillText("E", arcCx - arcR - 6, groundY + 14);
     ctx.fillText("W", arcCx + arcR + 6, groundY + 14);
-    ctx.font = "8px DM Sans, sans-serif";
-    ctx.fillText("Solar Noon", arcCx, groundY - arcR - 8);
-    ctx.font = "10px DM Sans, sans-serif";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
     ctx.fillText("Midnight", arcCx, groundY + arcR + 14);
   }
 

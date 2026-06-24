@@ -247,11 +247,6 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-muted);
 }
 
-#noon-label {
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
