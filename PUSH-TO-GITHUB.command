@@ -13,7 +13,6 @@ else
   echo ""
   echo "Push failed."
   echo "Create the repo at https://github.com/new (name: solar-light-app), then try again."
-  echo "SSH key help: ADD-SSH-KEY-TO-GITHUB.txt"
 fi
 
 echo ""

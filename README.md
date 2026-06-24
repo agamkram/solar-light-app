@@ -5,7 +5,7 @@ Shows how much direct sunlight hits the ground at your location, as a percentage
 ## Deploy on Vercel
 
 1. Create a repo on GitHub named `solar-light-app` (or use the push script after the remote exists).
-2. Double-click **PUSH-TO-GITHUB.command** (one-time SSH setup: see **ADD-SSH-KEY-TO-GITHUB.txt**).
+2. Double-click **PUSH-TO-GITHUB.command**.
 3. Go to [vercel.com/new](https://vercel.com/new) and import `agamkram/solar-light-app`.
 4. Framework: **Other** (static site). Root directory: `.` — click **Deploy**.
 
