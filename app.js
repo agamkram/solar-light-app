@@ -308,10 +308,13 @@
     }
   });
 
-  window.addEventListener("resize", () => {
+  function onLayoutChange() {
     resizeCanvas();
     update();
-  });
+  }
+
+  window.addEventListener("resize", onLayoutChange);
+  new ResizeObserver(onLayoutChange).observe(canvas.parentElement);
 
   setInterval(() => {
     if (followNow) refreshDay();

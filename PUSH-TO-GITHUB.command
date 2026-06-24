@@ -3,8 +3,18 @@ cd "$(dirname "$0")"
 
 export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_ed25519_github -o IdentitiesOnly=yes"
 
+git add -A
+
+if ! git diff --cached --quiet; then
+  git commit -m "Update $(date '+%Y-%m-%d %H:%M')"
+  echo "Committed local changes."
+else
+  echo "No local changes to commit."
+fi
+
+echo ""
 echo "Pushing to github.com/agamkram/solar-light-app ..."
-git push -u origin main --force
+git push -u origin main
 
 if [ $? -eq 0 ]; then
   echo ""
@@ -12,7 +22,8 @@ if [ $? -eq 0 ]; then
 else
   echo ""
   echo "Push failed."
-  echo "Create the repo at https://github.com/new (name: solar-light-app), then try again."
+  echo "If the repo does not exist yet, create it at https://github.com/new"
+  echo "Name: solar-light-app (empty — no README)"
 fi
 
 echo ""

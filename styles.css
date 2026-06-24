@@ -31,10 +31,17 @@ body {
 .app {
   max-width: 560px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 2rem;
+  padding: 1.25rem 1rem 1rem;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .header {
@@ -79,7 +86,8 @@ body {
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
-  aspect-ratio: 4 / 3;
+  flex: 1;
+  min-height: 260px;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -119,8 +127,8 @@ body {
 }
 
 .controls {
-  margin-top: 1.5rem;
-  flex: 1;
+  margin-top: 1.25rem;
+  flex-shrink: 0;
 }
 
 .time-row {
@@ -372,6 +380,11 @@ input[type="range"]::-moz-range-thumb {
 
 @media (min-width: 480px) {
   .app {
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  .sky-panel {
+    flex: none;
+    aspect-ratio: 4 / 3;
   }
 }
