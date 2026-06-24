@@ -23,6 +23,7 @@
   const locationText = document.getElementById("location-text");
   const nowBtn = document.getElementById("now-btn");
   const manualBtn = document.getElementById("manual-location-btn");
+  const locateBtn = document.getElementById("locate-btn");
   const dialog = document.getElementById("location-dialog");
   const locationForm = document.getElementById("location-form");
   const latInput = document.getElementById("lat-input");
@@ -367,7 +368,9 @@
     });
   }
 
-  function requestLocation() {
+  function requestLocation(userInitiated = false) {
+    if (userInitiated) locationText.textContent = "Detecting location…";
+
     if (!navigator.geolocation) {
       locationText.textContent = "Geolocation unavailable";
       openLocationDialog();
@@ -404,6 +407,7 @@
   });
 
   manualBtn.addEventListener("click", openLocationDialog);
+  locateBtn.addEventListener("click", () => requestLocation(true));
   cancelLocation.addEventListener("click", () => dialog.close());
 
   locationForm.addEventListener("submit", (e) => {

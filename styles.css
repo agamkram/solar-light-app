@@ -77,9 +77,25 @@ main {
   justify-content: flex-end;
 }
 
-.location-icon {
+.location-icon-btn {
+  font-family: var(--font);
   color: var(--accent);
   font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.15rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.location-icon-btn:hover {
+  color: #ffc04d;
+}
+
+.location-icon-btn:active {
+  transform: scale(0.92);
 }
 
 .sky-panel {
