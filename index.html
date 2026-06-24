@@ -6,6 +6,11 @@
   <meta name="description" content="Ground sunlight as a percentage of solar noon for your location.">
   <title>Solar Light</title>
   <link rel="stylesheet" href="styles.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  >
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -80,14 +85,11 @@
   <dialog id="location-dialog" class="location-dialog">
     <form method="dialog" id="location-form">
       <h2>Set your location</h2>
-      <label>
-        Latitude
-        <input type="number" id="lat-input" step="0.0001" min="-90" max="90" required>
-      </label>
-      <label>
-        Longitude
-        <input type="number" id="lon-input" step="0.0001" min="-180" max="180" required>
-      </label>
+      <p class="map-hint">Tap or click the map to place a pin</p>
+      <div id="location-map" class="location-map" role="application" aria-label="Location map"></div>
+      <p id="map-coords" class="map-coords">—</p>
+      <input type="hidden" id="lat-input">
+      <input type="hidden" id="lon-input">
       <div class="dialog-actions">
         <button type="button" id="cancel-location" class="secondary-btn">Cancel</button>
         <button type="submit" class="primary-btn">Apply</button>
@@ -95,6 +97,7 @@
     </form>
   </dialog>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="solar.js"></script>
   <script src="app.js"></script>
 </body>

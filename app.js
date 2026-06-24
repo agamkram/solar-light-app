@@ -27,6 +27,7 @@
   const locationForm = document.getElementById("location-form");
   const latInput = document.getElementById("lat-input");
   const lonInput = document.getElementById("lon-input");
+  const mapCoordsEl = document.getElementById("map-coords");
   const cancelLocation = document.getElementById("cancel-location");
 
   let lat = null;
@@ -35,6 +36,10 @@
   let followNow = false;
   let trackedDay = null;
   let midnightTimer = null;
+  let locationMap = null;
+  let locationMarker = null;
+  let pickLat = 35.5951;
+  let pickLon = -82.5515;
 
   function lerpColor(a, b, t) {
     return a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -299,10 +304,73 @@
     drawSky(elevation, pct, solarTime);
   }
 
+  function updateMapCoordsDisplay() {
+    mapCoordsEl.textContent = `${pickLat.toFixed(4)}°, ${pickLon.toFixed(4)}°`;
+    latInput.value = pickLat.toFixed(4);
+    lonInput.value = pickLon.toFixed(4);
+  }
+
+  function setMapPin(newLat, newLon, pan = false) {
+    pickLat = newLat;
+    pickLon = newLon;
+    updateMapCoordsDisplay();
+    if (!locationMap) return;
+
+    if (locationMarker) {
+      locationMarker.setLatLng([newLat, newLon]);
+    } else {
+      locationMarker = L.marker([newLat, newLon], { draggable: true }).addTo(
+        locationMap
+      );
+      locationMarker.on("dragend", () => {
+        const pos = locationMarker.getLatLng();
+        setMapPin(pos.lat, pos.lng);
+      });
+    }
+
+    if (pan) locationMap.setView([newLat, newLon], locationMap.getZoom());
+  }
+
+  function initLocationMap() {
+    if (locationMap) return;
+
+    locationMap = L.map("location-map", {
+      zoomControl: true,
+      attributionControl: true,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(locationMap);
+
+    locationMap.on("click", (event) => {
+      setMapPin(event.latlng.lat, event.latlng.lng);
+    });
+  }
+
+  function openLocationDialog() {
+    const startLat = lat ?? 35.5951;
+    const startLon = lon ?? -82.5515;
+    pickLat = startLat;
+    pickLon = startLon;
+    updateMapCoordsDisplay();
+    dialog.showModal();
+
+    requestAnimationFrame(() => {
+      initLocationMap();
+      const zoom = lat != null ? 10 : 4;
+      locationMap.setView([startLat, startLon], zoom);
+      setMapPin(startLat, startLon);
+      locationMap.invalidateSize();
+    });
+  }
+
   function requestLocation() {
     if (!navigator.geolocation) {
       locationText.textContent = "Geolocation unavailable";
-      dialog.showModal();
+      openLocationDialog();
       return;
     }
 
@@ -318,10 +386,8 @@
         );
       },
       () => {
-        locationText.textContent = "Location denied — set manually";
-        latInput.value = "35.5951";
-        lonInput.value = "-82.5515";
-        dialog.showModal();
+        locationText.textContent = "Location denied — set on map";
+        openLocationDialog();
       },
       { enableHighAccuracy: false, timeout: 10000 }
     );
@@ -337,16 +403,18 @@
     refreshDay();
   });
 
-  manualBtn.addEventListener("click", () => dialog.showModal());
+  manualBtn.addEventListener("click", openLocationDialog);
   cancelLocation.addEventListener("click", () => dialog.close());
 
   locationForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const newLat = parseFloat(latInput.value);
-    const newLon = parseFloat(lonInput.value);
-    if (Number.isFinite(newLat) && Number.isFinite(newLon)) {
+    if (Number.isFinite(pickLat) && Number.isFinite(pickLon)) {
       followNow = true;
-      setLocation(newLat, newLon, `${newLat.toFixed(2)}°, ${newLon.toFixed(2)}°`);
+      setLocation(
+        pickLat,
+        pickLon,
+        `${pickLat.toFixed(2)}°, ${pickLon.toFixed(2)}°`
+      );
       dialog.close();
     }
   });
