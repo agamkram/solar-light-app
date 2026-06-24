@@ -148,7 +148,7 @@
     trackedDay = Solar.dayStamp(now);
 
     sunriseLabel.textContent = `Sunrise ${Solar.formatTime(dayEvents.sunrise)}`;
-    noonLabel.textContent = `Noon ${Solar.formatTime(dayEvents.solarNoon)}`;
+    noonLabel.textContent = `Solar Noon ${Solar.formatTime(dayEvents.solarNoon)}`;
     sunsetLabel.textContent = `Sunset ${Solar.formatTime(dayEvents.sunset)}`;
     dayLengthEl.textContent = Solar.formatDuration(
       dayEvents.sunset - dayEvents.sunrise
@@ -369,7 +369,9 @@
     ctx.textAlign = "center";
     ctx.fillText("E", arcCx - arcR - 6, groundY + 14);
     ctx.fillText("W", arcCx + arcR + 6, groundY + 14);
-    ctx.fillText("N", arcCx, groundY - arcR - 8);
+    ctx.font = "8px DM Sans, sans-serif";
+    ctx.fillText("Solar Noon", arcCx, groundY - arcR - 8);
+    ctx.font = "10px DM Sans, sans-serif";
     ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
     ctx.fillText("Midnight", arcCx, groundY + arcR + 14);
   }
