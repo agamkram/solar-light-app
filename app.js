@@ -3,7 +3,7 @@
   const SUN_RADIUS = 14;
   const GLOW_RADIUS = 36;
   const TUCK_FADE_DEG = 4;
-  const GROUND_LINE = 0.72;
+  const GROUND_LINE = 0.66;
   const ARC_RADIUS_RATIO = 0.42;
   const SKY_TOP_MARGIN = 20;
   const TICK_MS = 30000;
