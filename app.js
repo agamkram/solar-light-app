@@ -42,6 +42,8 @@
   let pickLat = 35.5951;
   let pickLon = -82.5515;
   let terrainAltitudeM = 0;
+  let stars = null;
+  let starsKey = "";
 
   function lerpColor(a, b, t) {
     return a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -161,18 +163,87 @@
     update();
   }
 
+  function nightBlend(elevation) {
+    if (elevation >= 0) return { night: 0, twilight: 0 };
+    const depth = -elevation;
+    const night = Math.min(1, Math.max(0, (depth - 2) / 16));
+    const twilight =
+      depth < 14 ? Math.exp(-0.5 * Math.pow((depth - 4) / 4.5, 2)) : 0;
+    return { night, twilight };
+  }
+
   function skyColors(elevation, pct) {
-    const t = Math.max(0, Math.min(1, elevation / 70));
+    const dayT = Math.max(0, Math.min(1, elevation / 70));
     const warmth = pct / 100;
-    return {
-      top: lerpColor([15, 20, 40], [55, 130, 210], t),
-      mid: lerpColor([35, 45, 75], [120, 185, 240], t),
+    const { night, twilight } = nightBlend(elevation);
+
+    const day = {
+      top: lerpColor([15, 20, 40], [55, 130, 210], dayT),
+      mid: lerpColor([35, 45, 75], [120, 185, 240], dayT),
       horizon: lerpColor(
         [180, 90, 50],
         [255, 220, 160],
-        Math.max(t, warmth * 0.6)
+        Math.max(dayT, warmth * 0.6)
       ),
     };
+
+    const nightSky = {
+      top: [3, 5, 14],
+      mid: [6, 10, 24],
+      horizon: [10, 14, 32],
+    };
+
+    const duskHorizon = lerpColor(
+      lerpColor(day.horizon, nightSky.horizon, night),
+      [140, 75, 48],
+      twilight * (1 - night * 0.5)
+    );
+
+    return {
+      top: lerpColor(day.top, nightSky.top, night),
+      mid: lerpColor(day.mid, nightSky.mid, night),
+      horizon: duskHorizon,
+      night,
+      twilight,
+    };
+  }
+
+  function buildStars(w, skyH) {
+    let seed = 42;
+    const rng = () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+
+    const count = Math.floor((w * skyH) / 900);
+    stars = [];
+    for (let i = 0; i < count; i++) {
+      const bright = rng() > 0.92;
+      stars.push({
+        x: rng() * w,
+        y: rng() * skyH * 0.96,
+        r: bright ? rng() * 0.9 + 1.1 : rng() * 0.8 + 0.25,
+        a: bright ? rng() * 0.35 + 0.65 : rng() * 0.35 + 0.2,
+      });
+    }
+    starsKey = `${w}|${skyH}`;
+  }
+
+  function drawStars(w, groundY, night) {
+    if (night < 0.03) return;
+
+    if (starsKey !== `${w}|${groundY}`) buildStars(w, groundY);
+
+    const fade = Math.pow(night, 1.15);
+    ctx.save();
+    for (const star of stars) {
+      ctx.globalAlpha = star.a * fade;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function circleRadius(w, h, groundY) {
@@ -198,8 +269,8 @@
     return t >= dayEvents.sunrise.getTime() && t <= dayEvents.sunset.getTime();
   }
 
-  function drawSun(sunX, sunY, groundY, w, belowHorizon, straddlesHorizon) {
-    const alpha = belowHorizon ? 0.45 : 1;
+  function drawSun(sunX, sunY, groundY, w, belowHorizon, straddlesHorizon, night) {
+    const alpha = belowHorizon ? 0.15 + 0.3 * (1 - night) : 1;
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -253,7 +324,20 @@
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, groundY);
 
-    const groundBright = pct / 100;
+    if (colors.twilight > 0.05) {
+      const glow = ctx.createLinearGradient(0, groundY - groundY * 0.45, 0, groundY);
+      glow.addColorStop(0, "rgba(0, 0, 0, 0)");
+      glow.addColorStop(
+        1,
+        `rgba(180, 90, 50, ${colors.twilight * 0.22 * (1 - colors.night * 0.6)})`
+      );
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, groundY);
+    }
+
+    drawStars(w, groundY, colors.night);
+
+    const groundBright = (pct / 100) * (1 - colors.night * 0.85);
     const groundGrad = ctx.createLinearGradient(0, groundY, 0, h);
     groundGrad.addColorStop(0, rgb(lerpColor([18, 32, 16], [78, 128, 62], groundBright)));
     groundGrad.addColorStop(1, rgb(lerpColor([10, 18, 9], [32, 52, 26], groundBright)));
@@ -278,7 +362,7 @@
     const daylight = isDaylight(solarTime);
     const straddlesHorizon =
       sunY + SUN_RADIUS > groundY && sunY - SUN_RADIUS < groundY;
-    drawSun(sunX, sunY, groundY, w, !daylight, straddlesHorizon);
+    drawSun(sunX, sunY, groundY, w, !daylight, straddlesHorizon, colors.night);
 
     ctx.fillStyle = "rgba(255,255,255,0.45)";
     ctx.font = "10px DM Sans, sans-serif";
@@ -299,6 +383,7 @@
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    starsKey = "";
   }
 
   function update() {
