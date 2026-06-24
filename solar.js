@@ -23,6 +23,26 @@ const Solar = (() => {
     return toJulian(date) - J2000;
   }
 
+  function localMidnight(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function localNoon(date) {
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      12,
+      0,
+      0,
+      0
+    );
+  }
+
+  function dayStamp(date) {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
   function rightAscension(l) {
     return Math.atan2(
       Math.sin(l) * Math.cos(OBLIQUITY),
@@ -107,18 +127,6 @@ const Solar = (() => {
     return solarTransitJ(a, M, L);
   }
 
-  function localNoon(date) {
-    return new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      12,
-      0,
-      0,
-      0
-    );
-  }
-
   function getDayEvents(lat, lon, date) {
     const lw = DEG * -lon;
     const phi = DEG * lat;
@@ -162,49 +170,29 @@ const Solar = (() => {
     return `${h}h ${m}m`;
   }
 
-  function sliderToTime(sunrise, sunset, sliderValue) {
-    const t = sliderValue / 1000;
-    return new Date(
-      sunrise.getTime() + t * (sunset.getTime() - sunrise.getTime())
-    );
+  function sliderToTime(sliderValue, date) {
+    const midnight = localMidnight(date);
+    return new Date(midnight.getTime() + (sliderValue / 1000) * dayMs);
   }
 
-  function timeToSlider(sunrise, sunset, time) {
-    const span = sunset.getTime() - sunrise.getTime();
-    if (span <= 0) return 500;
-    const t = (time.getTime() - sunrise.getTime()) / span;
+  function timeToSlider(time) {
+    const midnight = localMidnight(time);
+    const t = (time.getTime() - midnight.getTime()) / dayMs;
     return Math.round(Math.max(0, Math.min(1, t)) * 1000);
   }
 
-  /**
-   * During daylight: proportional.
-   * After sunset until local midnight: 1000 (west).
-   * After midnight until sunrise: 0 (east, awaiting dawn).
-   */
-  function sliderForNow(sunrise, sunset, now) {
-    const t = now.getTime();
-    const rise = sunrise.getTime();
-    const set = sunset.getTime();
+  function sliderForNow(now) {
+    return timeToSlider(now);
+  }
 
-    if (t >= rise && t <= set) {
-      return timeToSlider(sunrise, sunset, now);
-    }
+  /** Full 24h circle: top = solar noon, bottom = midnight, left = east, right = west. */
+  function sunCycleAngle(solarTime, solarNoon) {
+    const hoursFromNoon = (solarTime.getTime() - solarNoon.getTime()) / 3600000;
+    return Math.PI / 2 - (hoursFromNoon / 12) * PI;
+  }
 
-    const midnight = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    ).getTime();
-
-    if (t >= midnight && t < rise) {
-      return 0;
-    }
-
-    if (t > set) {
-      return 1000;
-    }
-
-    return 1000;
+  function cycleAngleForEvents(solarTime, events) {
+    return sunCycleAngle(solarTime, events.solarNoon);
   }
 
   return {
@@ -216,5 +204,9 @@ const Solar = (() => {
     sliderToTime,
     timeToSlider,
     sliderForNow,
+    sunCycleAngle,
+    cycleAngleForEvents,
+    localMidnight,
+    dayStamp,
   };
 })();

@@ -4,9 +4,10 @@
   const GLOW_RADIUS = 36;
   const TUCK_FADE_DEG = 4;
   const GROUND_LINE = 0.66;
-  const ARC_RADIUS_RATIO = 0.42;
-  const SKY_TOP_MARGIN = 20;
-  const TICK_MS = 30000;
+  const CIRCLE_RADIUS_RATIO = 0.38;
+  const SKY_TOP_MARGIN = 16;
+  const TICK_MS = 1000;
+  const DAY_CHECK_MS = 30000;
 
   const canvas = document.getElementById("sky-canvas");
   const ctx = canvas.getContext("2d");
@@ -34,6 +35,7 @@
   let dayEvents = null;
   let followNow = false;
   let trackedDay = null;
+  let midnightTimer = null;
 
   function lerpColor(a, b, t) {
     return a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -76,35 +78,54 @@
     refreshDay();
   }
 
-  function dayStamp(date) {
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  function ensureCurrentDay() {
+    const stamp = Solar.dayStamp(new Date());
+    if (trackedDay === stamp) return false;
+    refreshDay();
+    return true;
+  }
+
+  function scheduleMidnightRefresh() {
+    clearTimeout(midnightTimer);
+    const now = new Date();
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    );
+    midnightTimer = setTimeout(() => {
+      refreshDay();
+      scheduleMidnightRefresh();
+    }, nextMidnight.getTime() - now.getTime() + 100);
   }
 
   function getSolarTime() {
     const now = new Date();
     if (!dayEvents) return now;
     if (followNow) return now;
-    return Solar.sliderToTime(
-      dayEvents.sunrise,
-      dayEvents.sunset,
-      Number(slider.value)
-    );
+    return Solar.sliderToTime(Number(slider.value), now);
   }
 
   function syncSliderToNow() {
-    const now = new Date();
-    slider.value = Solar.sliderForNow(
-      dayEvents.sunrise,
-      dayEvents.sunset,
-      now
-    );
+    slider.value = Solar.sliderForNow(new Date());
+  }
+
+  function updateSliderMarkers() {
+    if (!dayEvents) return;
+    const today = new Date();
+    const sunrisePos = (Solar.timeToSlider(dayEvents.sunrise) / 1000) * 100;
+    const noonPos = (Solar.timeToSlider(dayEvents.solarNoon) / 1000) * 100;
+    const sunsetPos = (Solar.timeToSlider(dayEvents.sunset) / 1000) * 100;
+    slider.style.setProperty("--sunrise-pos", `${sunrisePos}%`);
+    slider.style.setProperty("--noon-pos", `${noonPos}%`);
+    slider.style.setProperty("--sunset-pos", `${sunsetPos}%`);
   }
 
   function refreshDay() {
     if (lat == null || lon == null) return;
 
     const now = new Date();
-    trackedDay = dayStamp(now);
+    trackedDay = Solar.dayStamp(now);
     dayEvents = Solar.getDayEvents(lat, lon, now);
 
     sunriseLabel.textContent = `Sunrise ${Solar.formatTime(dayEvents.sunrise)}`;
@@ -115,15 +136,11 @@
     );
     maxElevationEl.textContent = `${dayEvents.maxElevation.toFixed(1)}°`;
 
-    const noonSlider = Solar.timeToSlider(
-      dayEvents.sunrise,
-      dayEvents.sunset,
-      dayEvents.solarNoon
-    );
-    slider.style.setProperty("--noon-pos", `${(noonSlider / 1000) * 100}%`);
+    updateSliderMarkers();
 
     if (followNow) syncSliderToNow();
 
+    scheduleMidnightRefresh();
     update();
   }
 
@@ -141,31 +158,46 @@
     };
   }
 
-  function sunPosition(elevation, maxElev, isAfternoon, groundY, arcR) {
-    const elevRad = elevation * DEG;
-    const maxElevRad = maxElev * DEG;
-    const heightPx = (Math.sin(elevRad) / Math.sin(maxElevRad)) * arcR;
-    const heightFrac = Math.max(0, Math.min(1, heightPx / arcR));
-    const arcAngle = isAfternoon
-      ? (heightFrac > 0 ? Math.asin(heightFrac) : 0)
-      : (heightFrac > 0 ? Math.PI - Math.asin(heightFrac) : Math.PI);
-    const arcCx = canvas.clientWidth / 2;
-    const tuck =
-      elevation <= 0
-        ? SUN_RADIUS
-        : SUN_RADIUS * (1 - Math.min(1, elevation / TUCK_FADE_DEG));
-
-    return {
-      x: arcCx + Math.cos(arcAngle) * arcR,
-      y: groundY - heightPx + tuck,
-    };
+  function circleRadius(w, h, groundY) {
+    return Math.min(
+      w * CIRCLE_RADIUS_RATIO,
+      w * 0.46,
+      groundY - SKY_TOP_MARGIN,
+      h - groundY - 28
+    );
   }
 
-  function drawSun(sunX, sunY, groundY, w) {
-    ctx.save();
+  function sunOnCircle(solarTime, elevation, groundY, arcR, arcCx) {
+    const angle = Solar.cycleAngleForEvents(solarTime, dayEvents);
+    const x = arcCx + Math.cos(angle) * arcR;
+    let y = groundY - Math.sin(angle) * arcR;
+
+    if (elevation > 0 && elevation < TUCK_FADE_DEG) {
+      y += SUN_RADIUS * (1 - elevation / TUCK_FADE_DEG);
+    }
+
+    return { x, y, angle };
+  }
+
+  function drawCycleMarker(angle, groundY, arcR, arcCx, color) {
+    const x = arcCx + Math.cos(angle) * arcR;
+    const y = groundY - Math.sin(angle) * arcR;
     ctx.beginPath();
-    ctx.rect(0, 0, w, groundY);
-    ctx.clip();
+    ctx.fillStyle = color;
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawSun(sunX, sunY, groundY, w, belowHorizon) {
+    const alpha = belowHorizon ? 0.45 : 1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (!belowHorizon) {
+      ctx.beginPath();
+      ctx.rect(0, 0, w, groundY);
+      ctx.clip();
+    }
 
     const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, GLOW_RADIUS * 2);
     glow.addColorStop(0, "rgba(255, 230, 150, 0.35)");
@@ -194,22 +226,14 @@
     ctx.restore();
   }
 
-  function arcRadius(w, groundY) {
-    return Math.min(
-      w * ARC_RADIUS_RATIO,
-      w * 0.48,
-      Math.max(0, groundY - SKY_TOP_MARGIN)
-    );
-  }
-
-  function drawSky(elevation, pct, isAfternoon, maxElev) {
+  function drawSky(elevation, pct, solarTime) {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (w < 1 || h < 1) return;
 
     const colors = skyColors(elevation, pct);
     const groundY = h * GROUND_LINE;
-    const arcR = arcRadius(w, groundY);
+    const arcR = circleRadius(w, h, groundY);
     const arcCx = w / 2;
 
     const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
@@ -233,29 +257,38 @@
     ctx.stroke();
 
     ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
     ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.beginPath();
-    ctx.arc(arcCx, groundY, arcR, Math.PI, 0);
+    ctx.arc(arcCx, groundY, arcR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const { x: sunX, y: sunY } = sunPosition(
+    const sunriseAngle = Solar.cycleAngleForEvents(dayEvents.sunrise, dayEvents);
+    const noonAngle = Solar.cycleAngleForEvents(dayEvents.solarNoon, dayEvents);
+    const sunsetAngle = Solar.cycleAngleForEvents(dayEvents.sunset, dayEvents);
+    drawCycleMarker(sunriseAngle, groundY, arcR, arcCx, "rgba(255, 200, 120, 0.55)");
+    drawCycleMarker(noonAngle, groundY, arcR, arcCx, "rgba(245, 166, 35, 0.75)");
+    drawCycleMarker(sunsetAngle, groundY, arcR, arcCx, "rgba(255, 160, 90, 0.55)");
+
+    const { x: sunX, y: sunY } = sunOnCircle(
+      solarTime,
       elevation,
-      maxElev,
-      isAfternoon,
       groundY,
-      arcR
+      arcR,
+      arcCx
     );
-    if (sunY - SUN_RADIUS < groundY) {
-      drawSun(sunX, sunY, groundY, w);
-    }
+    const belowHorizon = elevation <= 0 || sunY >= groundY - SUN_RADIUS * 0.5;
+    drawSun(sunX, sunY, groundY, w, belowHorizon);
 
     ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.font = "11px DM Sans, sans-serif";
+    ctx.font = "10px DM Sans, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("E", arcCx - arcR - 8, groundY + 16);
-    ctx.fillText("W", arcCx + arcR + 8, groundY + 16);
+    ctx.fillText("E", arcCx - arcR - 6, groundY + 14);
+    ctx.fillText("W", arcCx + arcR + 6, groundY + 14);
+    ctx.fillText("N", arcCx, groundY - arcR - 8);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.fillText("Midnight", arcCx, groundY + arcR + 14);
   }
 
   function resizeCanvas() {
@@ -271,6 +304,7 @@
 
   function update() {
     if (!dayEvents) return;
+    if (ensureCurrentDay()) return;
 
     if (followNow) syncSliderToNow();
 
@@ -282,12 +316,7 @@
     percentageEl.textContent = `${pct.toFixed(1)}%`;
     timeEl.textContent = Solar.formatTime(followNow ? now : solarTime);
     elevationEl.textContent = `${Math.max(0, elevation).toFixed(1)}°`;
-    drawSky(
-      elevation,
-      pct,
-      solarTime >= dayEvents.solarNoon,
-      dayEvents.maxElevation
-    );
+    drawSky(elevation, pct, solarTime);
   }
 
   function requestLocation() {
@@ -351,19 +380,22 @@
   new ResizeObserver(onLayoutChange).observe(canvas.parentElement);
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && followNow) refreshDay();
+    if (document.visibilityState === "visible") refreshDay();
   });
 
   setInterval(() => {
-    if (!followNow || lat == null) return;
-    const now = new Date();
-    if (dayStamp(now) !== trackedDay) {
-      refreshDay();
-      return;
+    if (lat == null) return;
+    if (ensureCurrentDay()) return;
+    if (followNow) {
+      syncSliderToNow();
+      update();
     }
-    syncSliderToNow();
-    update();
   }, TICK_MS);
+
+  setInterval(() => {
+    if (lat == null) return;
+    ensureCurrentDay();
+  }, DAY_CHECK_MS);
 
   resizeCanvas();
   requestLocation();
