@@ -5,6 +5,7 @@
   const TUCK_FADE_DEG = 4;
   const GROUND_LINE = 0.72;
   const ARC_RADIUS_RATIO = 0.42;
+  const SKY_TOP_MARGIN = 20;
   const TICK_MS = 30000;
 
   const canvas = document.getElementById("sky-canvas");
@@ -181,12 +182,22 @@
     ctx.restore();
   }
 
+  function arcRadius(w, groundY) {
+    return Math.min(
+      w * ARC_RADIUS_RATIO,
+      w * 0.48,
+      Math.max(0, groundY - SKY_TOP_MARGIN)
+    );
+  }
+
   function drawSky(elevation, pct, isAfternoon, maxElev) {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
+    if (w < 1 || h < 1) return;
+
     const colors = skyColors(elevation, pct);
     const groundY = h * GROUND_LINE;
-    const arcR = w * ARC_RADIUS_RATIO;
+    const arcR = arcRadius(w, groundY);
     const arcCx = w / 2;
 
     const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
@@ -236,10 +247,13 @@
   }
 
   function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
+    const parent = canvas.parentElement;
+    const rect = parent.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
+
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
