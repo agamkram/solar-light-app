@@ -112,7 +112,6 @@
 
   function updateSliderMarkers() {
     if (!dayEvents) return;
-    const today = new Date();
     const sunrisePos = (Solar.timeToSlider(dayEvents.sunrise) / 1000) * 100;
     const noonPos = (Solar.timeToSlider(dayEvents.solarNoon) / 1000) * 100;
     const sunsetPos = (Solar.timeToSlider(dayEvents.sunset) / 1000) * 100;
@@ -125,8 +124,8 @@
     if (lat == null || lon == null) return;
 
     const now = new Date();
-    trackedDay = Solar.dayStamp(now);
     dayEvents = Solar.getDayEvents(lat, lon, now);
+    trackedDay = Solar.dayStamp(now);
 
     sunriseLabel.textContent = `Sunrise ${Solar.formatTime(dayEvents.sunrise)}`;
     noonLabel.textContent = `Noon ${Solar.formatTime(dayEvents.solarNoon)}`;
@@ -172,8 +171,10 @@
     const x = arcCx + Math.cos(angle) * arcR;
     let y = groundY - Math.sin(angle) * arcR;
 
-    if (elevation > 0 && elevation < TUCK_FADE_DEG) {
-      y += SUN_RADIUS * (1 - elevation / TUCK_FADE_DEG);
+    if (elevation > 0 && dayEvents.maxElevation > 0) {
+      const elevY = groundY - (elevation / dayEvents.maxElevation) * arcR;
+      const blend = Math.min(1, elevation / TUCK_FADE_DEG);
+      y = y * (1 - blend) + elevY * blend;
     }
 
     return { x, y, angle };
@@ -262,7 +263,7 @@
       arcR,
       arcCx
     );
-    const belowHorizon = elevation <= 0 || sunY >= groundY - SUN_RADIUS * 0.5;
+    const belowHorizon = elevation <= 0;
     drawSun(sunX, sunY, groundY, w, belowHorizon);
 
     ctx.fillStyle = "rgba(255,255,255,0.45)";
@@ -365,6 +366,14 @@
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") refreshDay();
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) refreshDay();
+  });
+
+  window.addEventListener("focus", () => {
+    if (lat != null) ensureCurrentDay();
   });
 
   setInterval(() => {

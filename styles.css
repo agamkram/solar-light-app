@@ -121,13 +121,6 @@ main {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-.percentage-label {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.75);
-  margin-top: 0.35rem;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-}
-
 .controls {
   margin-top: 1.25rem;
   flex-shrink: 0;

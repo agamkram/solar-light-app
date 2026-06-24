@@ -43,6 +43,26 @@ const Solar = (() => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   }
 
+  function alignToCalendarDay(instant, calendarDate) {
+    return new Date(
+      calendarDate.getFullYear(),
+      calendarDate.getMonth(),
+      calendarDate.getDate(),
+      instant.getHours(),
+      instant.getMinutes(),
+      instant.getSeconds(),
+      instant.getMilliseconds()
+    );
+  }
+
+  function sameCalendarDay(a, b) {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  }
+
   function rightAscension(l) {
     return Math.atan2(
       Math.sin(l) * Math.cos(OBLIQUITY),
@@ -127,11 +147,7 @@ const Solar = (() => {
     return solarTransitJ(a, M, L);
   }
 
-  function getDayEvents(lat, lon, date) {
-    const lw = DEG * -lon;
-    const phi = DEG * lat;
-    const d = toDays(localNoon(date));
-    const n = julianCycle(d, lw);
+  function computeCycle(lat, lon, n, lw, phi) {
     const ds = approxTransit(0, lw, n);
     const M = solarMeanAnomaly(ds);
     const L = eclipticLongitude(M);
@@ -139,11 +155,41 @@ const Solar = (() => {
     const Jnoon = solarTransitJ(ds, M, L);
     const Jset = getSetJ(SUNRISE_ANGLE, lw, phi, dec, n, M, L);
     const Jrise = Jnoon - (Jset - Jnoon);
-    const solarNoon = fromJulian(Jnoon);
+    return { Jrise, Jnoon, Jset };
+  }
+
+  function getDayEvents(lat, lon, date) {
+    const lw = DEG * -lon;
+    const phi = DEG * lat;
+    const calendarDay = localMidnight(date);
+    let n = julianCycle(toDays(localNoon(calendarDay)), lw);
+
+    let { Jrise, Jnoon, Jset } = computeCycle(lat, lon, n, lw, phi);
+    let solarNoon = alignToCalendarDay(fromJulian(Jnoon), calendarDay);
+
+    if (!sameCalendarDay(solarNoon, calendarDay)) {
+      const next = computeCycle(lat, lon, n + 1, lw, phi);
+      const prev = computeCycle(lat, lon, n - 1, lw, phi);
+      const nextNoon = alignToCalendarDay(fromJulian(next.Jnoon), calendarDay);
+      const prevNoon = alignToCalendarDay(fromJulian(prev.Jnoon), calendarDay);
+
+      if (sameCalendarDay(nextNoon, calendarDay)) {
+        n += 1;
+        ({ Jrise, Jnoon, Jset } = next);
+        solarNoon = nextNoon;
+      } else if (sameCalendarDay(prevNoon, calendarDay)) {
+        n -= 1;
+        ({ Jrise, Jnoon, Jset } = prev);
+        solarNoon = prevNoon;
+      }
+    }
+
+    const sunrise = alignToCalendarDay(fromJulian(Jrise), calendarDay);
+    const sunset = alignToCalendarDay(fromJulian(Jset), calendarDay);
 
     return {
-      sunrise: fromJulian(Jrise),
-      sunset: fromJulian(Jset),
+      sunrise,
+      sunset,
       solarNoon,
       maxElevation: getPosition(lat, lon, solarNoon).elevation,
     };
@@ -185,14 +231,44 @@ const Solar = (() => {
     return timeToSlider(now);
   }
 
-  /** Full 24h circle: top = solar noon, bottom = midnight, left = east, right = west. */
-  function sunCycleAngle(solarTime, solarNoon) {
-    const hoursFromNoon = (solarTime.getTime() - solarNoon.getTime()) / 3600000;
-    return Math.PI / 2 - (hoursFromNoon / 12) * PI;
+  /**
+   * Full 24h circle anchored to today's sun events:
+   * east horizon (π) = sunrise, top (π/2) = solar noon, west (0) = sunset,
+   * bottom (-π/2) = midnight.
+   */
+  function sunCycleAngle(solarTime, events) {
+    const { sunrise, solarNoon, sunset } = events;
+    const t = solarTime.getTime();
+    const sr = sunrise.getTime();
+    const sn = solarNoon.getTime();
+    const ss = sunset.getTime();
+    const midnight = localMidnight(solarTime).getTime();
+    const nextMidnight = midnight + dayMs;
+
+    if (t >= sr && t <= ss) {
+      if (t <= sn) {
+        const f = (t - sr) / (sn - sr);
+        return Math.PI - f * (Math.PI / 2);
+      }
+      const f = (t - sn) / (ss - sn);
+      return Math.PI / 2 - f * (Math.PI / 2);
+    }
+
+    if (t > ss) {
+      const span = nextMidnight - ss;
+      if (span <= 0) return 0;
+      const f = (t - ss) / span;
+      return -f * (Math.PI / 2);
+    }
+
+    const span = sr - midnight;
+    if (span <= 0) return -Math.PI / 2;
+    const f = (t - midnight) / span;
+    return -Math.PI / 2 - f * (Math.PI / 2);
   }
 
   function cycleAngleForEvents(solarTime, events) {
-    return sunCycleAngle(solarTime, events.solarNoon);
+    return sunCycleAngle(solarTime, events);
   }
 
   return {
