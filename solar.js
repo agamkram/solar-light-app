@@ -10,6 +10,9 @@ const Solar = (() => {
   const J2000 = 2451545;
   const OBLIQUITY = DEG * 23.4397;
   const SUNRISE_ANGLE = -0.833 * DEG;
+  /** Clear-sky broadband extinction coefficient (sea level). */
+  const EXTINCTION_K = 0.12;
+  const PRESSURE_SCALE_M = 8500;
 
   function toJulian(date) {
     return date.valueOf() / dayMs - 0.5 + J1970;
@@ -195,11 +198,37 @@ const Solar = (() => {
     };
   }
 
-  function irradiancePercent(elevation, maxElevation) {
+  /**
+   * Kasten & Young (1989) relative airmass; optional site-elevation pressure correction.
+   * AM ≈ 1 / cos(zenith) in the plane-parallel limit.
+   */
+  function airMass(elevationDeg, altitudeMeters = 0) {
+    if (elevationDeg <= 0) return Infinity;
+    const sinEl = Math.sin(elevationDeg * DEG);
+    const am =
+      1 /
+      (sinEl +
+        0.50572 * Math.pow(elevationDeg + 6.07995, -1.6364));
+    const pressureScale = Math.exp(
+      -Math.max(0, altitudeMeters) / PRESSURE_SCALE_M
+    );
+    return am * pressureScale;
+  }
+
+  /** Direct horizontal irradiance ∝ sin(elevation) × exp(−k × AM). */
+  function horizontalIrradiance(elevationDeg, altitudeMeters = 0) {
+    if (elevationDeg <= 0) return 0;
+    const am = airMass(elevationDeg, altitudeMeters);
+    if (!Number.isFinite(am)) return 0;
+    return Math.sin(elevationDeg * DEG) * Math.exp(-EXTINCTION_K * am);
+  }
+
+  function irradiancePercent(elevation, maxElevation, altitudeMeters = 0) {
     if (elevation <= 0 || maxElevation <= 0) return 0;
-    const ratio =
-      Math.sin(elevation * DEG) / Math.sin(maxElevation * DEG);
-    return Math.max(0, Math.min(100, ratio * 100));
+    const current = horizontalIrradiance(elevation, altitudeMeters);
+    const peak = horizontalIrradiance(maxElevation, altitudeMeters);
+    if (peak <= 0) return 0;
+    return Math.max(0, Math.min(100, (current / peak) * 100));
   }
 
   function formatTime(date) {

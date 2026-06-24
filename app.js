@@ -41,6 +41,7 @@
   let locationMarker = null;
   let pickLat = 35.5951;
   let pickLon = -82.5515;
+  let terrainAltitudeM = 0;
 
   function lerpColor(a, b, t) {
     return a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -54,10 +55,16 @@
     return `${Math.round(meters * 3.28084).toLocaleString()} ft`;
   }
 
+  function setTerrainAltitude(meters) {
+    terrainAltitudeM = Number.isFinite(meters) ? Math.max(0, meters) : 0;
+  }
+
   async function updateAltitude(latitude, longitude, gpsAltitude) {
     altitudeEl.textContent = "…";
     if (Number.isFinite(gpsAltitude)) {
+      setTerrainAltitude(gpsAltitude);
       altitudeEl.textContent = formatAltitude(gpsAltitude);
+      update();
       return;
     }
     try {
@@ -65,10 +72,16 @@
         `https://api.open-meteo.com/v1/elevation?latitude=${latitude}&longitude=${longitude}`
       );
       const data = await res.json();
-      altitudeEl.textContent = Number.isFinite(data.elevation?.[0])
-        ? formatAltitude(data.elevation[0])
-        : "—";
+      if (Number.isFinite(data.elevation?.[0])) {
+        setTerrainAltitude(data.elevation[0]);
+        altitudeEl.textContent = formatAltitude(data.elevation[0]);
+        update();
+      } else {
+        setTerrainAltitude(0);
+        altitudeEl.textContent = "—";
+      }
     } catch {
+      setTerrainAltitude(0);
       altitudeEl.textContent = "—";
     }
   }
@@ -297,7 +310,11 @@
     const now = new Date();
     const solarTime = getSolarTime();
     const { elevation } = Solar.getPosition(lat, lon, solarTime);
-    const pct = Solar.irradiancePercent(elevation, dayEvents.maxElevation);
+    const pct = Solar.irradiancePercent(
+      elevation,
+      dayEvents.maxElevation,
+      terrainAltitudeM
+    );
 
     percentageEl.textContent = `${pct.toFixed(1)}%`;
     timeEl.textContent = Solar.formatTime(followNow ? now : solarTime);
