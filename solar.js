@@ -107,10 +107,22 @@ const Solar = (() => {
     return solarTransitJ(a, M, L);
   }
 
+  function localNoon(date) {
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      12,
+      0,
+      0,
+      0
+    );
+  }
+
   function getDayEvents(lat, lon, date) {
     const lw = DEG * -lon;
     const phi = DEG * lat;
-    const d = toDays(date);
+    const d = toDays(localNoon(date));
     const n = julianCycle(d, lw);
     const ds = approxTransit(0, lw, n);
     const M = solarMeanAnomaly(ds);
@@ -164,11 +176,35 @@ const Solar = (() => {
     return Math.round(Math.max(0, Math.min(1, t)) * 1000);
   }
 
-  /** 0 = before sunrise, 1000 = after sunset, otherwise proportional. */
+  /**
+   * During daylight: proportional.
+   * After sunset until local midnight: 1000 (west).
+   * After midnight until sunrise: 0 (east, awaiting dawn).
+   */
   function sliderForNow(sunrise, sunset, now) {
-    if (now < sunrise) return 0;
-    if (now > sunset) return 1000;
-    return timeToSlider(sunrise, sunset, now);
+    const t = now.getTime();
+    const rise = sunrise.getTime();
+    const set = sunset.getTime();
+
+    if (t >= rise && t <= set) {
+      return timeToSlider(sunrise, sunset, now);
+    }
+
+    const midnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    ).getTime();
+
+    if (t >= midnight && t < rise) {
+      return 0;
+    }
+
+    if (t > set) {
+      return 1000;
+    }
+
+    return 1000;
   }
 
   return {

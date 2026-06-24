@@ -272,6 +272,8 @@
   function update() {
     if (!dayEvents) return;
 
+    if (followNow) syncSliderToNow();
+
     const now = new Date();
     const solarTime = getSolarTime();
     const { elevation } = Solar.getPosition(lat, lon, solarTime);
@@ -347,6 +349,10 @@
 
   window.addEventListener("resize", onLayoutChange);
   new ResizeObserver(onLayoutChange).observe(canvas.parentElement);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && followNow) refreshDay();
+  });
 
   setInterval(() => {
     if (!followNow || lat == null) return;
