@@ -33,6 +33,7 @@
   let lon = null;
   let dayEvents = null;
   let followNow = false;
+  let trackedDay = null;
 
   function lerpColor(a, b, t) {
     return a.map((v, i) => Math.round(v + (b[i] - v) * t));
@@ -75,8 +76,14 @@
     refreshDay();
   }
 
-  function getSelectedTime() {
-    if (!dayEvents) return new Date();
+  function dayStamp(date) {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  function getSolarTime() {
+    const now = new Date();
+    if (!dayEvents) return now;
+    if (followNow) return now;
     return Solar.sliderToTime(
       dayEvents.sunrise,
       dayEvents.sunset,
@@ -84,10 +91,21 @@
     );
   }
 
+  function syncSliderToNow() {
+    const now = new Date();
+    slider.value = Solar.sliderForNow(
+      dayEvents.sunrise,
+      dayEvents.sunset,
+      now
+    );
+  }
+
   function refreshDay() {
     if (lat == null || lon == null) return;
 
-    dayEvents = Solar.getDayEvents(lat, lon, new Date());
+    const now = new Date();
+    trackedDay = dayStamp(now);
+    dayEvents = Solar.getDayEvents(lat, lon, now);
 
     sunriseLabel.textContent = `Sunrise ${Solar.formatTime(dayEvents.sunrise)}`;
     noonLabel.textContent = `Noon ${Solar.formatTime(dayEvents.solarNoon)}`;
@@ -104,13 +122,7 @@
     );
     slider.style.setProperty("--noon-pos", `${(noonSlider / 1000) * 100}%`);
 
-    if (followNow) {
-      slider.value = Solar.timeToSlider(
-        dayEvents.sunrise,
-        dayEvents.sunset,
-        new Date()
-      );
-    }
+    if (followNow) syncSliderToNow();
 
     update();
   }
@@ -260,14 +272,20 @@
   function update() {
     if (!dayEvents) return;
 
-    const time = getSelectedTime();
-    const { elevation } = Solar.getPosition(lat, lon, time);
+    const now = new Date();
+    const solarTime = getSolarTime();
+    const { elevation } = Solar.getPosition(lat, lon, solarTime);
     const pct = Solar.irradiancePercent(elevation, dayEvents.maxElevation);
 
     percentageEl.textContent = `${pct.toFixed(1)}%`;
-    timeEl.textContent = Solar.formatTime(time);
+    timeEl.textContent = Solar.formatTime(followNow ? now : solarTime);
     elevationEl.textContent = `${Math.max(0, elevation).toFixed(1)}°`;
-    drawSky(elevation, pct, time >= dayEvents.solarNoon, dayEvents.maxElevation);
+    drawSky(
+      elevation,
+      pct,
+      solarTime >= dayEvents.solarNoon,
+      dayEvents.maxElevation
+    );
   }
 
   function requestLocation() {
@@ -331,7 +349,14 @@
   new ResizeObserver(onLayoutChange).observe(canvas.parentElement);
 
   setInterval(() => {
-    if (followNow) refreshDay();
+    if (!followNow || lat == null) return;
+    const now = new Date();
+    if (dayStamp(now) !== trackedDay) {
+      refreshDay();
+      return;
+    }
+    syncSliderToNow();
+    update();
   }, TICK_MS);
 
   resizeCanvas();

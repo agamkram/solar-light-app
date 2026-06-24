@@ -164,6 +164,13 @@ const Solar = (() => {
     return Math.round(Math.max(0, Math.min(1, t)) * 1000);
   }
 
+  /** 0 = before sunrise, 1000 = after sunset, otherwise proportional. */
+  function sliderForNow(sunrise, sunset, now) {
+    if (now < sunrise) return 0;
+    if (now > sunset) return 1000;
+    return timeToSlider(sunrise, sunset, now);
+  }
+
   return {
     getPosition,
     getDayEvents,
@@ -172,5 +179,6 @@ const Solar = (() => {
     formatDuration,
     sliderToTime,
     timeToSlider,
+    sliderForNow,
   };
 })();
