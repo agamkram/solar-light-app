@@ -109,7 +109,7 @@ main {
   align-items: center;
   justify-content: flex-start;
   pointer-events: none;
-  padding-top: 12%;
+  padding-top: 6%;
 }
 
 .percentage-display {
