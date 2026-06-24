@@ -3,7 +3,7 @@
   const SUN_RADIUS = 14;
   const GLOW_RADIUS = 36;
   const TUCK_FADE_DEG = 4;
-  const GROUND_LINE = 0.66;
+  const GROUND_LINE = 0.5;
   const CIRCLE_RADIUS_RATIO = 0.38;
   const SKY_TOP_MARGIN = 16;
   const TICK_MS = 1000;
@@ -179,15 +179,6 @@
     return { x, y, angle };
   }
 
-  function drawCycleMarker(angle, groundY, arcR, arcCx, color) {
-    const x = arcCx + Math.cos(angle) * arcR;
-    const y = groundY - Math.sin(angle) * arcR;
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   function drawSun(sunX, sunY, groundY, w, belowHorizon) {
     const alpha = belowHorizon ? 0.45 : 1;
 
@@ -263,13 +254,6 @@
     ctx.arc(arcCx, groundY, arcR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-
-    const sunriseAngle = Solar.cycleAngleForEvents(dayEvents.sunrise, dayEvents);
-    const noonAngle = Solar.cycleAngleForEvents(dayEvents.solarNoon, dayEvents);
-    const sunsetAngle = Solar.cycleAngleForEvents(dayEvents.sunset, dayEvents);
-    drawCycleMarker(sunriseAngle, groundY, arcR, arcCx, "rgba(255, 200, 120, 0.55)");
-    drawCycleMarker(noonAngle, groundY, arcR, arcCx, "rgba(245, 166, 35, 0.75)");
-    drawCycleMarker(sunsetAngle, groundY, arcR, arcCx, "rgba(255, 160, 90, 0.55)");
 
     const { x: sunX, y: sunY } = sunOnCircle(
       solarTime,
