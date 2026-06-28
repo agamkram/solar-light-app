@@ -31,6 +31,7 @@ body {
   margin: 0;
   display: flex;
   justify-content: center;
+  align-items: stretch;
 }
 
 .app {
@@ -427,32 +428,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (orientation: landscape) and (min-height: 500px) {
-  .app {
-    max-width: 960px;
-  }
-
-  main {
-    flex-direction: row;
-    align-items: stretch;
-    gap: 1.25rem;
-  }
-
   .sky-panel {
-    flex: 1.35;
-    min-height: 0;
-  }
-
-  .controls {
-    flex: 1;
-    margin-top: 0;
-    min-width: 260px;
-    max-width: 360px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
+    min-height: min(62vh, 440px);
   }
 }
