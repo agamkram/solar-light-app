@@ -18,6 +18,8 @@
 
 html {
   font-size: 16px;
+  height: 100%;
+  min-height: 100dvh;
 }
 
 body {
@@ -26,13 +28,22 @@ body {
   color: var(--text);
   min-height: 100dvh;
   line-height: 1.5;
+  margin: 0;
+  display: flex;
+  justify-content: center;
 }
 
 .app {
-  max-width: 560px;
+  width: 100%;
+  max-width: 640px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 1rem;
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
   min-height: 100dvh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
 }
@@ -102,8 +113,8 @@ main {
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
-  flex: 1;
-  min-height: 260px;
+  flex: 1 1 auto;
+  min-height: min(52vh, 420px);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -400,13 +411,48 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-@media (min-width: 480px) {
+@media (min-width: 600px) {
   .app {
-    padding: 2rem 1.5rem 1.5rem;
+    max-width: 720px;
+    padding:
+      max(1.25rem, env(safe-area-inset-top))
+      1.5rem
+      max(1.25rem, env(safe-area-inset-bottom))
+      1.5rem;
   }
 
   .sky-panel {
-    flex: none;
-    aspect-ratio: 4 / 3;
+    min-height: min(58vh, 480px);
+  }
+}
+
+@media (orientation: landscape) and (min-height: 500px) {
+  .app {
+    max-width: 960px;
+  }
+
+  main {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+
+  .sky-panel {
+    flex: 1.35;
+    min-height: 0;
+  }
+
+  .controls {
+    flex: 1;
+    margin-top: 0;
+    min-width: 260px;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
