@@ -7,7 +7,6 @@
   const SKY_TOP_MARGIN = 52;
   const CIRCLE_LABEL_FONT = "10px DM Sans, sans-serif";
   const TICK_MS = 1000;
-  const DAY_CHECK_MS = 30000;
 
   const canvas = document.getElementById("sky-canvas");
   const ctx = canvas.getContext("2d");
@@ -553,11 +552,6 @@
       update();
     }
   }, TICK_MS);
-
-  setInterval(() => {
-    if (lat == null) return;
-    ensureCurrentDay();
-  }, DAY_CHECK_MS);
 
   resizeCanvas();
   requestLocation();
