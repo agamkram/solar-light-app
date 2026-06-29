@@ -19,14 +19,19 @@
 html {
   font-size: 16px;
   height: 100%;
+  max-height: 100dvh;
   min-height: 100dvh;
+  overflow: hidden;
 }
 
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
+  height: 100dvh;
+  max-height: 100dvh;
   min-height: 100dvh;
+  overflow: hidden;
   line-height: 1.5;
   margin: 0;
   display: flex;
@@ -43,7 +48,10 @@ body {
     max(1rem, env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom))
     max(1rem, env(safe-area-inset-left));
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -114,8 +122,8 @@ main {
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
-  flex: 1 1 auto;
-  min-height: min(52vh, 420px);
+  flex: 1 1 0;
+  min-height: 0;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -414,21 +422,33 @@ input[type="range"]::-moz-range-thumb {
 
 @media (min-width: 600px) {
   .app {
-    max-width: 720px;
+    max-width: 560px;
     padding:
-      max(1.25rem, env(safe-area-inset-top))
-      1.5rem
-      max(1.25rem, env(safe-area-inset-bottom))
-      1.5rem;
-  }
-
-  .sky-panel {
-    min-height: min(58vh, 480px);
+      max(1rem, env(safe-area-inset-top))
+      1.25rem
+      max(1rem, env(safe-area-inset-bottom))
+      1.25rem;
   }
 }
 
-@media (orientation: landscape) and (min-height: 500px) {
-  .sky-panel {
-    min-height: min(62vh, 440px);
+@media (min-width: 769px) {
+  .header {
+    margin-bottom: 0.75rem;
+  }
+
+  .header h1 {
+    font-size: 1.35rem;
+  }
+
+  .controls {
+    margin-top: 0.75rem;
+  }
+
+  .slider-wrap {
+    margin-bottom: 0.75rem;
+  }
+
+  .current-time {
+    font-size: 1.2rem;
   }
 }
