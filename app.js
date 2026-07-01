@@ -64,7 +64,7 @@
 
     if (remasure || viewportChanged || layoutChanged || !fitNaturalH) {
       const prevTransform = appEl.style.transform;
-      appEl.style.transform = "translate(-50%, -50%) scale(1)";
+      appEl.style.transform = "scale(1)";
       fitNaturalH = appEl.offsetHeight;
       fitNaturalW = appEl.offsetWidth;
       appEl.style.transform = prevTransform;
@@ -81,7 +81,7 @@
       1
     );
 
-    appEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    appEl.style.transform = `scale(${scale})`;
     appEl.classList.add("is-fitted");
     resizeCanvas();
     if (dayEvents) update();

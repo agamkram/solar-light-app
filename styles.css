@@ -36,6 +36,9 @@ body {
   position: fixed;
   inset: 0;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding:
     max(0.35rem, env(safe-area-inset-top))
     max(0.5rem, env(safe-area-inset-right))
@@ -44,12 +47,11 @@ body {
 }
 
 .app {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  position: relative;
+  flex-shrink: 0;
   box-sizing: border-box;
   padding: 1rem;
-  transform: translate(-50%, -50%) scale(1);
+  transform: scale(1);
   transform-origin: center center;
   will-change: transform;
   display: flex;
@@ -283,28 +285,54 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (max-width: 767px) {
+  .fit-stage {
+    padding:
+      max(0.25rem, env(safe-area-inset-top))
+      max(0.35rem, env(safe-area-inset-right))
+      max(0.25rem, env(safe-area-inset-bottom))
+      max(0.35rem, env(safe-area-inset-left));
+  }
+
   .app {
-    padding: 0.75rem;
+    padding: 0.5rem 0.55rem;
   }
 
   .header {
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.6rem;
+    gap: 0.65rem;
+  }
+
+  .header h1 {
+    font-size: 1.35rem;
   }
 
   .sky-panel {
-    height: 320px;
+    height: clamp(300px, 54dvh, 460px);
   }
 
   .controls {
-    margin-top: 0.85rem;
+    margin-top: 0.65rem;
   }
 
   .slider-wrap {
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.65rem;
   }
 
   .time-row {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .current-time {
+    font-size: 1.2rem;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+  }
+
+  .stat {
+    padding: 0.55rem 0.4rem;
   }
 }
 
