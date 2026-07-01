@@ -75,9 +75,11 @@
 
     if (!fitNaturalH || !fitNaturalW) return;
 
-    const scale = layout === "phone"
-      ? availH / fitNaturalH
-      : Math.min(availH / fitNaturalH, availW / fitNaturalW);
+    const scale = Math.min(
+      availH / fitNaturalH,
+      availW / fitNaturalW,
+      1
+    );
 
     appEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
     appEl.classList.add("is-fitted");

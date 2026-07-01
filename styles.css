@@ -282,6 +282,32 @@ input[type="range"]::-moz-range-thumb {
   gap: 0.5rem;
 }
 
+@media (max-width: 767px) {
+  .app {
+    padding: 0.75rem;
+  }
+
+  .header {
+    margin-bottom: 0.85rem;
+  }
+
+  .sky-panel {
+    height: 320px;
+  }
+
+  .controls {
+    margin-top: 0.85rem;
+  }
+
+  .slider-wrap {
+    margin-bottom: 0.85rem;
+  }
+
+  .time-row {
+    margin-bottom: 0.75rem;
+  }
+}
+
 .stat {
   background: var(--surface);
   border-radius: 12px;
