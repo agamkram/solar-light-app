@@ -81,6 +81,8 @@
 
     appEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
     appEl.classList.add("is-fitted");
+    resizeCanvas();
+    if (dayEvents) update();
   }
 
   function scheduleFitToScreen(remasure = false) {
@@ -435,12 +437,21 @@
 
   function resizeCanvas() {
     const parent = canvas.parentElement;
-    const rect = parent.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1) return;
+    if (!parent) return;
+
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
+    if (w < 1 || h < 1) return;
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
+    const bitmapW = Math.round(w * dpr);
+    const bitmapH = Math.round(h * dpr);
+    if (canvas.width === bitmapW && canvas.height === bitmapH) return;
+
+    canvas.width = bitmapW;
+    canvas.height = bitmapH;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     starsKey = "";
   }
@@ -586,8 +597,6 @@
 
   function onLayoutChange() {
     scheduleFitToScreen(true);
-    resizeCanvas();
-    update();
   }
 
   window.addEventListener("resize", onLayoutChange);
@@ -617,7 +626,6 @@
     }
   }, TICK_MS);
 
-  resizeCanvas();
   scheduleFitToScreen(true);
   requestLocation();
 
