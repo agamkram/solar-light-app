@@ -30,6 +30,65 @@
   const lonInput = document.getElementById("lon-input");
   const mapCoordsEl = document.getElementById("map-coords");
   const cancelLocation = document.getElementById("cancel-location");
+  const appEl = document.getElementById("app");
+  const fitStageEl = document.getElementById("fit-stage");
+
+  const PHONE_MAX_WIDTH = 767;
+  const WIDE_APP_WIDTH = 640;
+  let fitFrame = 0;
+  let fitNaturalH = 0;
+  let fitNaturalW = 0;
+  let fitAvailH = 0;
+  let fitAvailW = 0;
+  let fitLayout = "";
+
+  function isPhoneLayout(availW) {
+    return availW <= PHONE_MAX_WIDTH;
+  }
+
+  function appLayoutWidth(availW) {
+    return isPhoneLayout(availW) ? availW : WIDE_APP_WIDTH;
+  }
+
+  function fitToScreen(remasure = false) {
+    if (!appEl || !fitStageEl) return;
+
+    const availH = fitStageEl.clientHeight;
+    const availW = fitStageEl.clientWidth;
+    const viewportChanged = availH !== fitAvailH || availW !== fitAvailW;
+    const layout = isPhoneLayout(availW) ? "phone" : "wide";
+    const layoutChanged = layout !== fitLayout;
+
+    appEl.style.width = `${appLayoutWidth(availW)}px`;
+    appEl.dataset.layout = layout;
+
+    if (remasure || viewportChanged || layoutChanged || !fitNaturalH) {
+      const prevTransform = appEl.style.transform;
+      appEl.style.transform = "translate(-50%, -50%) scale(1)";
+      fitNaturalH = appEl.offsetHeight;
+      fitNaturalW = appEl.offsetWidth;
+      appEl.style.transform = prevTransform;
+      fitAvailH = availH;
+      fitAvailW = availW;
+      fitLayout = layout;
+    }
+
+    if (!fitNaturalH || !fitNaturalW) return;
+
+    const scale = layout === "phone"
+      ? availH / fitNaturalH
+      : Math.min(availH / fitNaturalH, availW / fitNaturalW);
+
+    appEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    appEl.classList.add("is-fitted");
+  }
+
+  function scheduleFitToScreen(remasure = false) {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => fitToScreen(remasure));
+    });
+  }
 
   let lat = null;
   let lon = null;
@@ -96,6 +155,7 @@
     lonInput.value = newLon.toFixed(4);
     updateAltitude(newLat, newLon, gpsAltitude);
     refreshDay();
+    scheduleFitToScreen(true);
   }
 
   function ensureCurrentDay() {
@@ -525,11 +585,15 @@
   });
 
   function onLayoutChange() {
+    scheduleFitToScreen(true);
     resizeCanvas();
     update();
   }
 
   window.addEventListener("resize", onLayoutChange);
+  window.addEventListener("orientationchange", () => scheduleFitToScreen(true));
+  window.visualViewport?.addEventListener("resize", () => scheduleFitToScreen(true));
+  window.visualViewport?.addEventListener("scroll", () => scheduleFitToScreen(true));
   new ResizeObserver(onLayoutChange).observe(canvas.parentElement);
 
   document.addEventListener("visibilitychange", () => {
@@ -554,5 +618,10 @@
   }, TICK_MS);
 
   resizeCanvas();
+  scheduleFitToScreen(true);
   requestLocation();
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => scheduleFitToScreen(true));
+  }
 })();
