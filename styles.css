@@ -58,21 +58,57 @@ body {
   flex-direction: column;
 }
 
-/* Phone: room under notch; bottom pad is home-indicator only (fit kit eats slack) */
+/*
+ * Phone full-bleed: sky panel grows into leftover height so controls sit at the
+ * bottom with no dead letterbox. (Scale-to-fit left ~1/2" empty when width-limited.)
+ * Top pad keeps header clear of the notch — leave this alone.
+ */
 @media (max-width: 767px) {
-  .fit-stage {
-    align-items: center;
-    justify-content: center;
-    /* ~1/4" air below notch / Dynamic Island, not flush */
+  .fit-stage,
+  .fit-stage.fit-stage--fluid {
+    align-items: stretch;
+    justify-content: stretch;
     padding-top: max(0.7rem, calc(env(safe-area-inset-top, 0px) + 0.28in));
-    padding-bottom: max(0.15rem, env(safe-area-inset-bottom, 0px));
-    padding-left: max(0.35rem, env(safe-area-inset-left, 0px));
-    padding-right: max(0.35rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(0.12rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.4rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.4rem, env(safe-area-inset-right, 0px));
   }
 
-  .app {
+  .fit-stage--fluid > .app,
+  .app[data-layout="phone"] {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
     margin: 0;
-    transform-origin: center center;
+    transform: none !important;
+    will-change: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0.65rem 0.55rem 0.35rem;
+    box-sizing: border-box;
+  }
+
+  .app[data-layout="phone"] > .header {
+    flex: 0 0 auto;
+    margin-bottom: 0.75rem;
+  }
+
+  .app[data-layout="phone"] > main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app[data-layout="phone"] .sky-panel {
+    flex: 1 1 auto;
+    height: auto !important;
+    min-height: 11rem;
+  }
+
+  .app[data-layout="phone"] .controls {
+    flex: 0 0 auto;
+    margin-top: 0.85rem;
   }
 }
 

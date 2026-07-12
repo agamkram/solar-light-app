@@ -28,6 +28,7 @@
       getAppLayoutWidth,
       getCapScaleAtOne,
       getLayoutName,
+      useScaleForLayout,
       onFit = () => {},
     } = options || {};
 
@@ -112,6 +113,31 @@
       return stage.clientHeight === fitAvailH && stage.clientWidth === fitAvailW;
     }
 
+    function shouldScale(layout, availW, availH) {
+      if (typeof useScaleForLayout === "function") {
+        return useScaleForLayout(layout, availW, availH);
+      }
+      return true;
+    }
+
+    function applyFluidLayout(layout) {
+      stage.classList.add("fit-stage--fluid");
+      app.dataset.layout = layout;
+      app.style.width = "";
+      app.style.maxWidth = "";
+      app.style.transform = "none";
+      fitLayout = layout;
+      fitAvailH = stage.clientHeight;
+      fitAvailW = stage.clientWidth;
+      appliedScale = 1;
+      if (!app.classList.contains("is-fitted")) {
+        layoutShownAt = performance.now();
+      }
+      app.classList.add("is-fitted");
+      layoutReady = true;
+      onFit({ scale: 1, layout, availH: fitAvailH, availW: fitAvailW, fluid: true });
+    }
+
     function fitToScreen(remasure = false) {
       if (!ensureElements() || !shouldFit()) return;
 
@@ -123,6 +149,23 @@
       const layout = layoutFor(availW, availH);
       const layoutChanged = layout !== fitLayout;
 
+      // Phone: CSS full-bleed + growing sky panel (no letterbox under controls).
+      if (!shouldScale(layout, availW, availH)) {
+        if (
+          layoutReady &&
+          app.classList.contains("is-fitted") &&
+          layout === fitLayout &&
+          stage.classList.contains("fit-stage--fluid") &&
+          !viewportChanged &&
+          !remasure
+        ) {
+          return;
+        }
+        applyFluidLayout(layout);
+        return;
+      }
+
+      stage.classList.remove("fit-stage--fluid");
       app.style.width = `${appLayoutWidth(availW, availH)}px`;
       app.dataset.layout = layout;
 
@@ -150,143 +193,22 @@
       if (capAtOne) scale = Math.min(scale, 1);
       if (!Number.isFinite(scale) || scale <= 0) scale = 1;
 
-      app.style.transform = `scale(${scale})`;
-
-      // Paint-test against real stage box: keep under notch, eat empty bottom band.
-      const cs = root.getComputedStyle(stage);
-      const padT = parseFloat(cs.paddingTop) || 0;
-      const padB = parseFloat(cs.paddingBottom) || 0;
-      const padL = parseFloat(cs.paddingLeft) || 0;
-      const padR = parseFloat(cs.paddingRight) || 0;
-
-      function stageLimits() {
-        const stageRect = stage.getBoundingClientRect();
-        return {
-          limitTop: stageRect.top + padT,
-          limitBottom: stageRect.bottom - padB - 4,
-          limitLeft: stageRect.left + padL,
-          limitRight: stageRect.right - padR - 1,
-          contentH: Math.max(1, stageRect.height - padT - padB - 4),
-          contentW: Math.max(1, stageRect.width - padL - padR - 1),
-        };
-      }
-
-      // Shrink until fully inside (especially top under notch / bottom overshoot).
-      for (let i = 0; i < 5; i += 1) {
-        const { limitTop, limitBottom, limitRight, contentH, contentW } =
-          stageLimits();
-        const painted = app.getBoundingClientRect();
-        let fix = 1;
-        if (painted.top < limitTop - 0.5) {
-          fix = Math.min(fix, contentH / Math.max(1, painted.height));
-        }
-        if (painted.bottom > limitBottom + 0.5) {
-          fix = Math.min(fix, contentH / Math.max(1, painted.height));
-        }
-        if (painted.right > limitRight + 0.5) {
-          fix = Math.min(fix, contentW / Math.max(1, painted.width));
-        }
-        if (fix >= 0.999) break;
-        scale = Math.max(0.05, scale * fix);
-        if (capAtOne) scale = Math.min(scale, 1);
-        app.style.transform = `scale(${scale})`;
-      }
-
-      // Grow into leftover room if both height and width allow (keep aspect).
-      {
-        const { limitTop, limitBottom, limitRight, contentW, contentH } =
-          stageLimits();
-        const painted = app.getBoundingClientRect();
-        const unusedBottom = limitBottom - painted.bottom;
-        const unusedTop = painted.top - limitTop;
-        const verticalSlack = Math.min(unusedBottom, unusedTop);
-        if (verticalSlack > 4 && painted.height > 1) {
-          let grow = (painted.height + verticalSlack * 2 - 4) / painted.height;
-          const nextW = painted.width * grow;
-          if (nextW > contentW + 0.5) {
-            grow = contentW / Math.max(1, painted.width);
-          }
-          if (grow > 1.001) {
-            scale = Math.max(0.05, scale * grow);
-            if (capAtOne) scale = Math.min(scale, 1);
-            app.style.transform = `scale(${scale})`;
-          }
-        }
-        // Shrink again if grow clipped.
-        for (let i = 0; i < 3; i += 1) {
-          const lim = stageLimits();
-          const p = app.getBoundingClientRect();
-          let fix = 1;
-          if (p.top < lim.limitTop - 0.5) {
-            fix = Math.min(fix, lim.contentH / Math.max(1, p.height));
-          }
-          if (p.bottom > lim.limitBottom + 0.5) {
-            fix = Math.min(fix, lim.contentH / Math.max(1, p.height));
-          }
-          if (p.right > lim.limitRight + 0.5) {
-            fix = Math.min(fix, lim.contentW / Math.max(1, p.width));
-          }
-          if (fix >= 0.999) break;
-          scale = Math.max(0.05, scale * fix);
-          if (capAtOne) scale = Math.min(scale, 1);
-          app.style.transform = `scale(${scale})`;
-        }
-      }
-
-      // If width still limits scale, letterbox remains. Shift DOWN so most of
-      // the dead band isn't under the cards (keep a few px bottom clear; don't
-      // invade the notch padding above).
-      let shiftY = 0;
-      {
-        const { limitTop, limitBottom } = stageLimits();
-        const painted = app.getBoundingClientRect();
-        const slackBottom = limitBottom - painted.bottom;
-        const roomTop = painted.top - limitTop;
-        // Leave ~6px under cards; move the rest of the bottom slack upward into the layout.
-        const desiredBottom = 6;
-        if (slackBottom > desiredBottom + 4 && roomTop > 4) {
-          shiftY = Math.min(slackBottom - desiredBottom, roomTop - 4);
-          if (shiftY > 2) {
-            app.style.transform = `translateY(${shiftY}px) scale(${scale})`;
-            // Final clamp if shift somehow clips.
-            const after = app.getBoundingClientRect();
-            if (after.bottom > limitBottom + 0.5) {
-              shiftY -= after.bottom - limitBottom;
-              app.style.transform =
-                shiftY > 0.5
-                  ? `translateY(${shiftY}px) scale(${scale})`
-                  : `scale(${scale})`;
-              if (shiftY <= 0.5) shiftY = 0;
-            }
-            if (after.top < limitTop - 0.5) {
-              shiftY = 0;
-              app.style.transform = `scale(${scale})`;
-            }
-          } else {
-            shiftY = 0;
-          }
-        }
-      }
-
       if (
         layoutReady &&
         app.classList.contains("is-fitted") &&
-        Math.abs(scale - appliedScale) < scaleEpsilon &&
-        Math.abs((app._fitShiftY || 0) - shiftY) < 1
+        Math.abs(scale - appliedScale) < scaleEpsilon
       ) {
-        appliedScale = scale;
-        app._fitShiftY = shiftY;
         return;
       }
 
+      app.style.transform = `scale(${scale})`;
       appliedScale = scale;
-      app._fitShiftY = shiftY;
       if (!app.classList.contains("is-fitted")) {
         layoutShownAt = performance.now();
       }
       app.classList.add("is-fitted");
       layoutReady = true;
-      onFit({ scale, layout, availH, availW, shiftY });
+      onFit({ scale, layout, availH, availW });
     }
 
     function scheduleFitToScreen(remasure = false) {

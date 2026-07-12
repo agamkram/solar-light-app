@@ -59,8 +59,8 @@
     },
     getAppLayoutWidth: (_availW, layout) =>
       layout === "wide" ? DESKTOP_ARTBOARD_W : TOUCH_ARTBOARD_W,
-    // Touch: no scale cap — as large as possible, keep proportions.
-    // Desktop: cap at 1 so it doesn't billboard large monitors.
+    // Phone = fluid (sky grows). Tablet = max proportional scale. Desktop = capped card.
+    useScaleForLayout: (layout) => layout !== "phone",
     getCapScaleAtOne: (layout) => layout === "wide",
     getTopBuffer: () => 0,
     onFit: () => {
