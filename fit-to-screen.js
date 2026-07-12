@@ -1,7 +1,6 @@
 /**
  * FitToScreen — shared viewport-fit kit for scaled-canvas web apps.
- * Sizes the stage to the visible viewport, waits for stability at open,
- * and avoids the scale(1) remeasure flash that causes shrink-on-open on iOS.
+ * One artboard, scale as large as fits (optional cap at 1 for desktop).
  */
 (function (root) {
   "use strict";
@@ -26,6 +25,9 @@
       capScaleAtOne = true,
       shouldFit = () => true,
       getTopBuffer,
+      getAppLayoutWidth,
+      getCapScaleAtOne,
+      getLayoutName,
       onFit = () => {},
     } = options || {};
 
@@ -55,24 +57,53 @@
       return availW <= phoneMaxWidth;
     }
 
-    function appLayoutWidth(availW) {
+    function layoutFor(availW, availH) {
+      if (typeof getLayoutName === "function") {
+        return getLayoutName(availW, availH);
+      }
+      return isPhoneLayout(availW) ? "phone" : "wide";
+    }
+
+    function appLayoutWidth(availW, availH) {
+      const layout = layoutFor(availW, availH);
+      if (typeof getAppLayoutWidth === "function") {
+        const custom = getAppLayoutWidth(availW, layout, availH);
+        if (custom != null) return custom;
+      }
       return isPhoneLayout(availW) ? availW : wideAppWidth;
+    }
+
+    function isTouchLike() {
+      return (
+        (root.navigator && root.navigator.maxTouchPoints > 0) ||
+        root.matchMedia?.("(pointer: coarse)")?.matches ||
+        root.matchMedia?.("(hover: none)")?.matches
+      );
     }
 
     function syncFitStageViewport() {
       if (!ensureElements()) return;
       const vv = root.visualViewport;
-      if (!vv || !isPhoneLayout(root.innerWidth)) {
+      // Phone + tablet (not desktop monitors)
+      const useVv =
+        vv &&
+        (isPhoneLayout(root.innerWidth) ||
+          (root.innerWidth <= 1366 && isTouchLike()));
+      if (!useVv) {
         stage.style.top = "";
         stage.style.left = "";
         stage.style.width = "";
         stage.style.height = "";
         return;
       }
-      stage.style.top = `${vv.offsetTop}px`;
-      stage.style.left = `${vv.offsetLeft}px`;
-      stage.style.width = `${vv.width}px`;
-      stage.style.height = `${vv.height}px`;
+      const top = vv.offsetTop;
+      const left = vv.offsetLeft;
+      const width = vv.width;
+      const height = Math.max(vv.height, root.innerHeight - top);
+      stage.style.top = `${top}px`;
+      stage.style.left = `${left}px`;
+      stage.style.width = `${width}px`;
+      stage.style.height = `${height}px`;
     }
 
     function viewportSizeMatchesFit() {
@@ -89,10 +120,10 @@
       const availH = stage.clientHeight;
       const availW = stage.clientWidth;
       const viewportChanged = availH !== fitAvailH || availW !== fitAvailW;
-      const layout = isPhoneLayout(availW) ? "phone" : "wide";
+      const layout = layoutFor(availW, availH);
       const layoutChanged = layout !== fitLayout;
 
-      app.style.width = `${appLayoutWidth(availW)}px`;
+      app.style.width = `${appLayoutWidth(availW, availH)}px`;
       app.dataset.layout = layout;
 
       if (remasure || viewportChanged || layoutChanged || !fitNaturalH) {
@@ -109,11 +140,17 @@
       if (!fitNaturalH || !fitNaturalW) return;
 
       const buffer = topBufferFor(layout);
+      const SAFETY = 8;
       let scale = Math.min(
-        (availH - buffer) / fitNaturalH,
+        (availH - buffer - SAFETY) / fitNaturalH,
         availW / fitNaturalW
       );
-      if (capScaleAtOne) scale = Math.min(scale, 1);
+      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+
+      const capAtOne = getCapScaleAtOne
+        ? getCapScaleAtOne(layout, availW, availH)
+        : capScaleAtOne;
+      if (capAtOne) scale = Math.min(scale, 1);
 
       if (
         layoutReady &&

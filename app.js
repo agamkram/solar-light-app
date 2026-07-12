@@ -30,8 +30,39 @@
   const lonInput = document.getElementById("lon-input");
   const mapCoordsEl = document.getElementById("map-coords");
   const cancelLocation = document.getElementById("cancel-location");
+  // One artboard; scale as large as fits on touch. Desktop stays a modest card.
+  const TOUCH_ARTBOARD_W = 390;
+  const DESKTOP_ARTBOARD_W = 640;
+
+  function isDesktopPointer() {
+    return (
+      navigator.maxTouchPoints === 0 &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    );
+  }
+
+  function isTouchLike() {
+    return (
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(hover: none)").matches
+    );
+  }
+
   const fit = FitToScreen.create({
-    wideAppWidth: 640,
+    wideAppWidth: DESKTOP_ARTBOARD_W,
+    phoneMaxWidth: 500,
+    getLayoutName: (availW, availH) => {
+      if (isDesktopPointer() && !isTouchLike()) return "wide";
+      if (Math.min(availW, availH) <= 500) return "phone";
+      return "tablet";
+    },
+    getAppLayoutWidth: (_availW, layout) =>
+      layout === "wide" ? DESKTOP_ARTBOARD_W : TOUCH_ARTBOARD_W,
+    // Touch: no scale cap — as large as possible, keep proportions.
+    // Desktop: cap at 1 so it doesn't billboard large monitors.
+    getCapScaleAtOne: (layout) => layout === "wide",
+    getTopBuffer: (layout) => (layout === "phone" ? 12 : 0),
     onFit: () => {
       resizeCanvas();
       if (dayEvents) update();

@@ -58,6 +58,18 @@ body {
   flex-direction: column;
 }
 
+/* Phone: nudge whole composition down (safe-area + a little air) */
+@media (max-width: 767px) {
+  .fit-stage {
+    padding-top: max(0.55rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
+    align-items: center;
+  }
+
+  .app {
+    margin-top: 0.14in;
+  }
+}
+
 .app:not(.is-fitted) {
   visibility: hidden;
 }
