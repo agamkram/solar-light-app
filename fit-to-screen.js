@@ -140,8 +140,8 @@
       if (!fitNaturalH || !fitNaturalW) return;
 
       const buffer = topBufferFor(layout);
-      // Tiny clear only — large SAFETY left empty band under phone layouts.
-      const SAFETY = 3;
+      // Prefer filling height; tiny safety only (was leaving a fat empty band).
+      const SAFETY = layout === "phone" ? 2 : 6;
       let scale = Math.min(
         (availH - buffer - SAFETY) / fitNaturalH,
         availW / fitNaturalW
