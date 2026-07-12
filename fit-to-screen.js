@@ -192,62 +192,78 @@
         app.style.transform = `scale(${scale})`;
       }
 
-      // Grow into leftover room under the UI (and above if any), keeping aspect.
+      // Grow into leftover room if both height and width allow (keep aspect).
       {
-        const { limitTop, limitBottom, limitRight, contentW } = stageLimits();
+        const { limitTop, limitBottom, limitRight, contentW, contentH } =
+          stageLimits();
         const painted = app.getBoundingClientRect();
         const unusedBottom = limitBottom - painted.bottom;
         const unusedTop = painted.top - limitTop;
-        const unused = Math.min(unusedBottom, unusedTop);
-        // Prefer reclaiming bottom band when both sides have slack (centered).
-        const slack = Math.max(0, unusedBottom);
-        if (slack > 3 && painted.height > 1) {
-          // Use half of bottom slack if top is already tight; else use min of both.
-          const usable =
-            unusedTop < 4 ? Math.max(0, unusedBottom - 2) : Math.min(unusedBottom, unusedTop) * 2;
-          if (usable > 3) {
-            let grow = (painted.height + usable) / painted.height;
-            const nextW = painted.width * grow;
-            if (nextW > contentW + 0.5) {
-              grow = contentW / Math.max(1, painted.width);
+        const verticalSlack = Math.min(unusedBottom, unusedTop);
+        if (verticalSlack > 4 && painted.height > 1) {
+          let grow = (painted.height + verticalSlack * 2 - 4) / painted.height;
+          const nextW = painted.width * grow;
+          if (nextW > contentW + 0.5) {
+            grow = contentW / Math.max(1, painted.width);
+          }
+          if (grow > 1.001) {
+            scale = Math.max(0.05, scale * grow);
+            if (capAtOne) scale = Math.min(scale, 1);
+            app.style.transform = `scale(${scale})`;
+          }
+        }
+        // Shrink again if grow clipped.
+        for (let i = 0; i < 3; i += 1) {
+          const lim = stageLimits();
+          const p = app.getBoundingClientRect();
+          let fix = 1;
+          if (p.top < lim.limitTop - 0.5) {
+            fix = Math.min(fix, lim.contentH / Math.max(1, p.height));
+          }
+          if (p.bottom > lim.limitBottom + 0.5) {
+            fix = Math.min(fix, lim.contentH / Math.max(1, p.height));
+          }
+          if (p.right > lim.limitRight + 0.5) {
+            fix = Math.min(fix, lim.contentW / Math.max(1, p.width));
+          }
+          if (fix >= 0.999) break;
+          scale = Math.max(0.05, scale * fix);
+          if (capAtOne) scale = Math.min(scale, 1);
+          app.style.transform = `scale(${scale})`;
+        }
+      }
+
+      // If width still limits scale, letterbox remains. Shift DOWN so most of
+      // the dead band isn't under the cards (keep a few px bottom clear; don't
+      // invade the notch padding above).
+      let shiftY = 0;
+      {
+        const { limitTop, limitBottom } = stageLimits();
+        const painted = app.getBoundingClientRect();
+        const slackBottom = limitBottom - painted.bottom;
+        const roomTop = painted.top - limitTop;
+        // Leave ~6px under cards; move the rest of the bottom slack upward into the layout.
+        const desiredBottom = 6;
+        if (slackBottom > desiredBottom + 4 && roomTop > 4) {
+          shiftY = Math.min(slackBottom - desiredBottom, roomTop - 4);
+          if (shiftY > 2) {
+            app.style.transform = `translateY(${shiftY}px) scale(${scale})`;
+            // Final clamp if shift somehow clips.
+            const after = app.getBoundingClientRect();
+            if (after.bottom > limitBottom + 0.5) {
+              shiftY -= after.bottom - limitBottom;
+              app.style.transform =
+                shiftY > 0.5
+                  ? `translateY(${shiftY}px) scale(${scale})`
+                  : `scale(${scale})`;
+              if (shiftY <= 0.5) shiftY = 0;
             }
-            if (grow > 1.001) {
-              scale = Math.max(0.05, scale * grow);
-              if (capAtOne) scale = Math.min(scale, 1);
+            if (after.top < limitTop - 0.5) {
+              shiftY = 0;
               app.style.transform = `scale(${scale})`;
-              const after = app.getBoundingClientRect();
-              if (
-                after.top < limitTop - 0.5 ||
-                after.bottom > limitBottom + 0.5 ||
-                after.right > limitRight + 0.5
-              ) {
-                const fix = Math.min(
-                  after.top < limitTop - 0.5
-                    ? contentW &&
-                      (limitBottom - limitTop) / Math.max(1, after.height)
-                    : 1,
-                  after.bottom > limitBottom + 0.5
-                    ? (limitBottom - after.top) / Math.max(1, after.height)
-                    : 1,
-                  after.right > limitRight + 0.5
-                    ? contentW / Math.max(1, after.width)
-                    : 1
-                );
-                // Fix top overflow using full content height
-                let fix2 = fix;
-                if (after.top < limitTop - 0.5) {
-                  fix2 = Math.min(
-                    fix2,
-                    (limitBottom - limitTop) / Math.max(1, after.height)
-                  );
-                }
-                if (fix2 < 0.999) {
-                  scale = Math.max(0.05, scale * fix2);
-                  if (capAtOne) scale = Math.min(scale, 1);
-                  app.style.transform = `scale(${scale})`;
-                }
-              }
             }
+          } else {
+            shiftY = 0;
           }
         }
       }
@@ -255,19 +271,22 @@
       if (
         layoutReady &&
         app.classList.contains("is-fitted") &&
-        Math.abs(scale - appliedScale) < scaleEpsilon
+        Math.abs(scale - appliedScale) < scaleEpsilon &&
+        Math.abs((app._fitShiftY || 0) - shiftY) < 1
       ) {
         appliedScale = scale;
+        app._fitShiftY = shiftY;
         return;
       }
 
       appliedScale = scale;
+      app._fitShiftY = shiftY;
       if (!app.classList.contains("is-fitted")) {
         layoutShownAt = performance.now();
       }
       app.classList.add("is-fitted");
       layoutReady = true;
-      onFit({ scale, layout, availH, availW });
+      onFit({ scale, layout, availH, availW, shiftY });
     }
 
     function scheduleFitToScreen(remasure = false) {
