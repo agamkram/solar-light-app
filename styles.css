@@ -58,15 +58,22 @@ body {
   flex-direction: column;
 }
 
-/* Phone: nudge whole composition down (safe-area + a little air) */
+/* Phone: sit low so little empty band under the bottom of the UI */
 @media (max-width: 767px) {
   .fit-stage {
-    padding-top: max(0.55rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
-    align-items: center;
+    align-items: flex-end;
+    justify-content: center;
+    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
+    /* Minimal under the cards — home indicator only */
+    padding-bottom: max(0.12rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.35rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.35rem, env(safe-area-inset-right, 0px));
   }
 
   .app {
-    margin-top: 0.14in;
+    margin-top: 0;
+    margin-bottom: 0;
+    transform-origin: bottom center;
   }
 }
 

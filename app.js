@@ -62,7 +62,7 @@
     // Touch: no scale cap — as large as possible, keep proportions.
     // Desktop: cap at 1 so it doesn't billboard large monitors.
     getCapScaleAtOne: (layout) => layout === "wide",
-    getTopBuffer: (layout) => (layout === "phone" ? 12 : 0),
+    getTopBuffer: () => 0,
     onFit: () => {
       resizeCanvas();
       if (dayEvents) update();
