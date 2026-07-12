@@ -125,6 +125,7 @@
       app.dataset.layout = layout;
       app.style.width = "";
       app.style.maxWidth = "";
+      app.style.height = "";
       app.style.transform = "none";
       fitLayout = layout;
       fitAvailH = stage.clientHeight;
@@ -135,7 +136,18 @@
       }
       app.classList.add("is-fitted");
       layoutReady = true;
-      onFit({ scale: 1, layout, availH: fitAvailH, availW: fitAvailW, fluid: true });
+      // Double rAF so flex sky height is final before canvas resize.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          onFit({
+            scale: 1,
+            layout,
+            availH: fitAvailH,
+            availW: fitAvailW,
+            fluid: true,
+          });
+        });
+      });
     }
 
     function fitToScreen(remasure = false) {
