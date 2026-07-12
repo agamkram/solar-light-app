@@ -54,12 +54,20 @@
     phoneMaxWidth: 500,
     getLayoutName: (availW, availH) => {
       if (isDesktopPointer() && !isTouchLike()) return "wide";
-      if (Math.min(availW, availH) <= 500) return "phone";
+      const shortSide = Math.min(availW, availH);
+      if (shortSide <= 500) {
+        // Portrait phone = fluid; landscape phone = scale so nothing is clipped.
+        return availW > availH ? "phone-landscape" : "phone";
+      }
       return "tablet";
     },
-    getAppLayoutWidth: (_availW, layout) =>
-      layout === "wide" ? DESKTOP_ARTBOARD_W : TOUCH_ARTBOARD_W,
-    // Phone = fluid (sky grows). Tablet = max proportional scale. Desktop = capped card.
+    getAppLayoutWidth: (_availW, layout) => {
+      if (layout === "wide") return DESKTOP_ARTBOARD_W;
+      // Compact landscape artboard so the full UI fits short height.
+      if (layout === "phone-landscape") return 520;
+      return TOUCH_ARTBOARD_W;
+    },
+    // Portrait phone only: fluid. Landscape phone + tablet: proportional scale.
     useScaleForLayout: (layout) => layout !== "phone",
     getCapScaleAtOne: (layout) => layout === "wide",
     getTopBuffer: () => 0,

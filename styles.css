@@ -61,20 +61,20 @@ body {
 }
 
 /*
- * Phone: true edge fill. ONLY system safe-area for top/bottom — no extra 1/4"+ pads.
- * Sky flex-grows so controls rest just above the home indicator.
+ * Phone PORTRAIT only: edge fill, ~1/8" air (or safe-area if larger).
+ * Sky grows; controls on the bottom. Do not apply this to landscape.
  */
-@media (max-width: 767px) {
+@media (max-width: 767px) and (orientation: portrait) {
   .fit-stage,
   .fit-stage.fit-stage--fluid {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
-    padding-right: max(10px, env(safe-area-inset-right, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: max(10px, env(safe-area-inset-left, 0px));
+    padding-top: max(0.125in, env(safe-area-inset-top, 0px));
+    padding-right: max(0.125in, env(safe-area-inset-right, 0px));
+    padding-bottom: max(0.125in, env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.125in, env(safe-area-inset-left, 0px));
   }
 
   .fit-stage--fluid > .app,
@@ -90,13 +90,13 @@ body {
     will-change: auto;
     display: flex !important;
     flex-direction: column;
-    padding: 6px 4px 2px !important;
+    padding: 0 !important;
     box-sizing: border-box;
   }
 
   .app[data-layout="phone"] > .header {
     flex: 0 0 auto;
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
   }
 
   .app[data-layout="phone"] > main {
@@ -114,15 +114,64 @@ body {
 
   .app[data-layout="phone"] .controls {
     flex: 0 0 auto;
-    margin-top: 10px !important;
+    margin-top: 8px !important;
   }
 
   .app[data-layout="phone"] .slider-wrap {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .app[data-layout="phone"] .time-row {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+  }
+}
+
+/* Phone LANDSCAPE: scale whole app into view (column fluid clips half the UI) */
+@media (max-width: 900px) and (orientation: landscape) {
+  .fit-stage {
+    align-items: center;
+    justify-content: center;
+    padding:
+      max(0.08in, env(safe-area-inset-top, 0px))
+      max(0.08in, env(safe-area-inset-right, 0px))
+      max(0.08in, env(safe-area-inset-bottom, 0px))
+      max(0.08in, env(safe-area-inset-left, 0px));
+  }
+
+  .app[data-layout="phone-landscape"] {
+    transform-origin: center center;
+  }
+
+  .app[data-layout="phone-landscape"] .header {
+    margin-bottom: 0.45rem;
+  }
+
+  .app[data-layout="phone-landscape"] .header h1 {
+    font-size: 1.15rem;
+  }
+
+  .app[data-layout="phone-landscape"] .subtitle {
+    font-size: 0.72rem;
+  }
+
+  .app[data-layout="phone-landscape"] .sky-panel {
+    height: 160px;
+  }
+
+  .app[data-layout="phone-landscape"] .controls {
+    margin-top: 0.45rem;
+  }
+
+  .app[data-layout="phone-landscape"] .time-row {
+    margin-bottom: 0.35rem;
+  }
+
+  .app[data-layout="phone-landscape"] .slider-wrap {
+    margin-bottom: 0.45rem;
+  }
+
+  .app[data-layout="phone-landscape"] .stats {
+    gap: 0.35rem;
   }
 }
 
