@@ -58,13 +58,14 @@ body {
   flex-direction: column;
 }
 
-/* Phone: centered scale, keep header on-screen, minimal bottom chrome pad */
+/* Phone: room under notch; bottom pad is home-indicator only (fit kit eats slack) */
 @media (max-width: 767px) {
   .fit-stage {
     align-items: center;
     justify-content: center;
-    padding-top: max(0.45rem, calc(env(safe-area-inset-top, 0px) + 0.2rem));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* ~1/4" air below notch / Dynamic Island, not flush */
+    padding-top: max(0.7rem, calc(env(safe-area-inset-top, 0px) + 0.28in));
+    padding-bottom: max(0.15rem, env(safe-area-inset-bottom, 0px));
     padding-left: max(0.35rem, env(safe-area-inset-left, 0px));
     padding-right: max(0.35rem, env(safe-area-inset-right, 0px));
   }

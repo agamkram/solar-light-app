@@ -140,28 +140,127 @@
       if (!fitNaturalH || !fitNaturalW) return;
 
       const buffer = topBufferFor(layout);
-      // Prefer filling height; tiny safety only (was leaving a fat empty band).
-      const SAFETY = layout === "phone" ? 2 : 6;
-      let scale = Math.min(
-        (availH - buffer - SAFETY) / fitNaturalH,
-        availW / fitNaturalW
-      );
-      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
-
+      const SAFETY = 6;
+      const heightRoom = Math.max(1, availH - buffer - SAFETY);
+      const widthRoom = Math.max(1, availW);
       const capAtOne = getCapScaleAtOne
         ? getCapScaleAtOne(layout, availW, availH)
         : capScaleAtOne;
+      let scale = Math.min(heightRoom / fitNaturalH, widthRoom / fitNaturalW);
       if (capAtOne) scale = Math.min(scale, 1);
+      if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+
+      app.style.transform = `scale(${scale})`;
+
+      // Paint-test against real stage box: keep under notch, eat empty bottom band.
+      const cs = root.getComputedStyle(stage);
+      const padT = parseFloat(cs.paddingTop) || 0;
+      const padB = parseFloat(cs.paddingBottom) || 0;
+      const padL = parseFloat(cs.paddingLeft) || 0;
+      const padR = parseFloat(cs.paddingRight) || 0;
+
+      function stageLimits() {
+        const stageRect = stage.getBoundingClientRect();
+        return {
+          limitTop: stageRect.top + padT,
+          limitBottom: stageRect.bottom - padB - 4,
+          limitLeft: stageRect.left + padL,
+          limitRight: stageRect.right - padR - 1,
+          contentH: Math.max(1, stageRect.height - padT - padB - 4),
+          contentW: Math.max(1, stageRect.width - padL - padR - 1),
+        };
+      }
+
+      // Shrink until fully inside (especially top under notch / bottom overshoot).
+      for (let i = 0; i < 5; i += 1) {
+        const { limitTop, limitBottom, limitRight, contentH, contentW } =
+          stageLimits();
+        const painted = app.getBoundingClientRect();
+        let fix = 1;
+        if (painted.top < limitTop - 0.5) {
+          fix = Math.min(fix, contentH / Math.max(1, painted.height));
+        }
+        if (painted.bottom > limitBottom + 0.5) {
+          fix = Math.min(fix, contentH / Math.max(1, painted.height));
+        }
+        if (painted.right > limitRight + 0.5) {
+          fix = Math.min(fix, contentW / Math.max(1, painted.width));
+        }
+        if (fix >= 0.999) break;
+        scale = Math.max(0.05, scale * fix);
+        if (capAtOne) scale = Math.min(scale, 1);
+        app.style.transform = `scale(${scale})`;
+      }
+
+      // Grow into leftover room under the UI (and above if any), keeping aspect.
+      {
+        const { limitTop, limitBottom, limitRight, contentW } = stageLimits();
+        const painted = app.getBoundingClientRect();
+        const unusedBottom = limitBottom - painted.bottom;
+        const unusedTop = painted.top - limitTop;
+        const unused = Math.min(unusedBottom, unusedTop);
+        // Prefer reclaiming bottom band when both sides have slack (centered).
+        const slack = Math.max(0, unusedBottom);
+        if (slack > 3 && painted.height > 1) {
+          // Use half of bottom slack if top is already tight; else use min of both.
+          const usable =
+            unusedTop < 4 ? Math.max(0, unusedBottom - 2) : Math.min(unusedBottom, unusedTop) * 2;
+          if (usable > 3) {
+            let grow = (painted.height + usable) / painted.height;
+            const nextW = painted.width * grow;
+            if (nextW > contentW + 0.5) {
+              grow = contentW / Math.max(1, painted.width);
+            }
+            if (grow > 1.001) {
+              scale = Math.max(0.05, scale * grow);
+              if (capAtOne) scale = Math.min(scale, 1);
+              app.style.transform = `scale(${scale})`;
+              const after = app.getBoundingClientRect();
+              if (
+                after.top < limitTop - 0.5 ||
+                after.bottom > limitBottom + 0.5 ||
+                after.right > limitRight + 0.5
+              ) {
+                const fix = Math.min(
+                  after.top < limitTop - 0.5
+                    ? contentW &&
+                      (limitBottom - limitTop) / Math.max(1, after.height)
+                    : 1,
+                  after.bottom > limitBottom + 0.5
+                    ? (limitBottom - after.top) / Math.max(1, after.height)
+                    : 1,
+                  after.right > limitRight + 0.5
+                    ? contentW / Math.max(1, after.width)
+                    : 1
+                );
+                // Fix top overflow using full content height
+                let fix2 = fix;
+                if (after.top < limitTop - 0.5) {
+                  fix2 = Math.min(
+                    fix2,
+                    (limitBottom - limitTop) / Math.max(1, after.height)
+                  );
+                }
+                if (fix2 < 0.999) {
+                  scale = Math.max(0.05, scale * fix2);
+                  if (capAtOne) scale = Math.min(scale, 1);
+                  app.style.transform = `scale(${scale})`;
+                }
+              }
+            }
+          }
+        }
+      }
 
       if (
         layoutReady &&
         app.classList.contains("is-fitted") &&
         Math.abs(scale - appliedScale) < scaleEpsilon
       ) {
+        appliedScale = scale;
         return;
       }
 
-      app.style.transform = `scale(${scale})`;
       appliedScale = scale;
       if (!app.classList.contains("is-fitted")) {
         layoutShownAt = performance.now();
